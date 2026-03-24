@@ -1,0 +1,20 @@
+{
+  "backup": {
+    "path": "backup/pw_251215_192346.zip",
+    "roles": [
+      "TEST_01",
+      "IFSAPP_FULL_INTEGRATION_TEST",
+      "IFSAPP_ADMIN_INTEGRATION_TEST",
+      "HR_APP_MGR_INTEGRATION_TEST"
+    ],
+    "count": 4,
+    "target_env": "DEV",
+    "ok": true,
+    "error": null
+  },
+  "version_id": "pw_251215_192346",
+  "source_env": "DEV",
+  "created_ts": 1765806826.3444214,
+  "default_target_env": "DEV",
+  "migrations": []
+}

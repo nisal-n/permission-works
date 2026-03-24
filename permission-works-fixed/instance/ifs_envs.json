@@ -1,0 +1,92 @@
+{
+  "envs": {
+    "CFG": {
+      "name": "CFG",
+      "base_root": "https://aagl-cfg.ifs.cloud/",
+      "realm": "aaglcfg1",
+      "client_id": "IFS_boomi",
+      "client_secret": "changeme",
+      "scope": "openid microprofile-jwt",
+      "ssl_verify": true,
+      "odata_prefix": "ifsfoundation",
+      "fndtemplobs_url": "",
+      "token_url": ""
+    },
+    "DEV": {
+      "name": "DEV",
+      "base_root": "https://pyse8ne-dev1.build.ifs.cloud/",
+      "realm": "pyse8nedev1",
+      "client_id": "IFS_boomi",
+      "client_secret": "changeme",
+      "scope": "openid microprofile-jwt",
+      "ssl_verify": true,
+      "odata_prefix": "",
+      "fndtemplobs_url": "",
+      "token_url": "https://pyse8ne-dev1.build.ifs.cloud/auth/realms/pyse8nedev1/protocol/openid-connect/token"
+    },
+    "PROD": {
+      "name": "PROD",
+      "base_root": "",
+      "realm": "",
+      "client_id": "",
+      "client_secret": "",
+      "scope": "openid microprofile-jwt",
+      "ssl_verify": true,
+      "odata_prefix": "",
+      "fndtemplobs_url": "",
+      "token_url": ""
+    },
+    "UAT": {
+      "name": "UAT",
+      "base_root": "",
+      "realm": "",
+      "client_id": "",
+      "client_secret": "",
+      "scope": "openid microprofile-jwt",
+      "ssl_verify": true,
+      "odata_prefix": "",
+      "fndtemplobs_url": "",
+      "token_url": ""
+    }
+  },
+  "active": {
+    "export": "DEV",
+    "import": "CFG"
+  },
+  "environments": {
+    "CFG": {
+      "cfg_base_root": "",
+      "cfg_realm": "",
+      "cfg_client_id": "",
+      "cfg_client_secret": "",
+      "cfg_scope": "openid microprofile-jwt",
+      "cfg_ssl_verify": true,
+      "cfg_odata_prefix": "",
+      "cfg_fndtemplobs_url": "",
+      "cfg_token_url": ""
+    },
+    "DEV": {
+      "cfg_base_root": "https://pyse8ne-dev1.build.ifs.cloud/",
+      "cfg_realm": "pyse8nedev1",
+      "cfg_client_id": "",
+      "cfg_client_secret": "",
+      "cfg_scope": "openid microprofile-jwt",
+      "cfg_ssl_verify": true,
+      "cfg_odata_prefix": "",
+      "cfg_fndtemplobs_url": "",
+      "cfg_token_url": "https://pyse8ne-dev1.build.ifs.cloud/auth/realms/pyse8nedev1/protocol/openid-connect/token"
+    },
+    "PROD": {
+      "cfg_base_root": "",
+      "cfg_realm": "",
+      "cfg_client_id": "",
+      "cfg_client_secret": "",
+      "cfg_scope": "openid microprofile-jwt",
+      "cfg_ssl_verify": true,
+      "cfg_odata_prefix": "",
+      "cfg_fndtemplobs_url": "",
+      "cfg_token_url": ""
+    }
+  },
+  "active_env": "DEV"
+}

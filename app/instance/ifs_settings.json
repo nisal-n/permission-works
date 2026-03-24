@@ -1,0 +1,29 @@
+{
+  "environments": {
+    "DEV": {
+      "base_root": "https://pyse8ne-dev1.build.ifs.cloud",
+      "token_url": "https://pyse8ne-dev1.build.ifs.cloud/auth/realms/pyse8nedev1/protocol/openid-connect/token",
+      "client_id": "IFS_boomi",
+      "client_secret": "Epfw6gkrGV1S0XRfPpz2",
+      "scope": "openid microprofile-jwt",
+      "ssl_verify": true
+    },
+    "CFG": {
+      "base_root": "https://aagl-cfg.ifs.cloud",
+      "token_url": "https://aagl-cfg.ifs.cloud/realms/<cfg-realm>/protocol/openid-connect/token",
+      "client_id": "<cfg-client-id>",
+      "client_secret": "<cfg-client-secret>",
+      "scope": "openid microprofile-jwt",
+      "ssl_verify": true,
+
+      "odata_prefix": "ifsfoundation",
+      "fndtemplobs_url": "https://aagl-cfg.ifs.cloud/main/ifsapplications/odata/v1/ifsfoundation"
+    }
+  },
+
+  "active_env": "DEV",
+
+  "active_export_env": "DEV",
+  "active_import_env": "CFG",
+  "default_env": "DEV"
+}

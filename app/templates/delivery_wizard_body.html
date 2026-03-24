@@ -1,0 +1,302 @@
+<!-- Step header -->
+<div class="mb-3 d-flex gap-2">
+  <button class="btn btn-outline-secondary btn-sm" id="tab1">1) Select Roles</button>
+  <button class="btn btn-outline-secondary btn-sm" id="tab2">2) Destination & Preview</button>
+</div>
+
+<div id="alert" class="alert d-none" role="alert"></div>
+
+<!-- STEP 1 -->
+<div id="step1" class="card p-3">
+  <h5 class="mb-3">Create Delivery</h5>
+
+  <div class="d-flex gap-2 align-items-center mb-2">
+    <button class="btn btn-sm btn-outline-secondary" id="filterBtn">Filter</button>
+    <input id="filterInput" class="form-control form-control-sm" placeholder="Type to filter roles..." style="max-width: 420px;">
+  </div>
+
+  <div id="rolesWrap" class="border rounded" style="height: 420px; overflow:auto;">
+    <div class="p-3 text-muted">Loading roles…</div>
+  </div>
+
+  <div class="form-check mt-3">
+    <input class="form-check-input" type="checkbox" id="inclUsers" checked>
+    <label class="form-check-label" for="inclUsers">Include User Grants</label>
+  </div>
+  <div class="form-check">
+    <input class="form-check-input" type="checkbox" id="inclGroups">
+    <label class="form-check-label" for="inclGroups">Include User Group Grants</label>
+  </div>
+
+  <div class="text-end mt-3">
+    <button class="btn btn-primary" id="nextBtn">Next</button>
+  </div>
+</div>
+
+<!-- STEP 2 -->
+<div id="step2" class="card p-3 d-none">
+  <h5 class="mb-3">Destination &amp; Preview</h5>
+
+  <div class="row g-3 align-items-center">
+    <div class="col-md-6">
+      <label class="form-label">From (Source Environment)</label>
+      <select id="sourceSelect" class="form-select" aria-label="Pick a source environment…">
+        <option value="DEV" selected>DEV</option>
+      </select>
+      <div class="form-text" id="fromHelp">Roles will be loaded from the selected Source.</div>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Delivery Environment</label>
+      <select id="envSelect" class="form-select" aria-label="Pick an environment…">
+        <option value="" selected>Pick an environment…</option>
+      </select>
+      <div class="form-text">
+        We’ll check if each selected role already exists there using GET by key:
+        <code>PermissionSets(Role='{Role}')</code>.
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-4">
+    <label class="form-label">Preview</label>
+    <div id="previewBox" class="form-control" style="height: 160px; overflow:auto;">
+      Select roles and environments to preview.
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-between mt-3">
+    <button class="btn btn-outline-secondary" id="backBtn">Back</button>
+    <button class="btn btn-success" id="finishBtn">Finish</button>
+  </div>
+</div>
+
+<script>
+  const alertEl = document.getElementById('alert');
+  function showAlert(type, msg) {
+    alertEl.className = 'alert alert-' + type;
+    alertEl.textContent = msg;
+    alertEl.classList.remove('d-none');
+  }
+  function hideAlert(){ alertEl.classList.add('d-none'); }
+  function html(s){ return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+  // Tabs
+  const step1 = document.getElementById('step1');
+  const step2 = document.getElementById('step2');
+  document.getElementById('tab1').onclick = () => { step1.classList.remove('d-none'); step2.classList.add('d-none'); };
+  document.getElementById('tab2').onclick = () => { step2.classList.remove('d-none'); step1.classList.add('d-none'); };
+
+  // Controls
+  const rolesWrap   = document.getElementById('rolesWrap');
+  const filterInput = document.getElementById('filterInput');
+  const envSelect   = document.getElementById('envSelect');     // target
+  const sourceSelect= document.getElementById('sourceSelect');  // source
+  const previewBox  = document.getElementById('previewBox');
+  const inclUsers   = document.getElementById('inclUsers');
+  const inclGroups  = document.getElementById('inclGroups');
+  const backBtn     = document.getElementById('backBtn');
+  const nextBtn     = document.getElementById('nextBtn');
+  const finishBtn   = document.getElementById('finishBtn');
+  const fromHelp    = document.getElementById('fromHelp');
+
+  let ALL_ROLES = [];     // [{role, description}]
+  let FILTERED = [];
+  let SELECTED = new Set();
+  let SOURCE_ENV = 'DEV';
+
+  // Load roles from SOURCE_ENV
+  async function loadRoles(){
+    try{
+      rolesWrap.innerHTML = `<div class="p-3 text-muted">Loading roles from ${html(SOURCE_ENV)}…</div>`;
+      const r = await fetch(`/dashboard/api/deploy/export/roles?source_env=${encodeURIComponent(SOURCE_ENV)}`, {headers:{'Accept':'application/json'}});
+      const j = await r.json();
+      if(!r.ok) throw new Error(j.error || ('HTTP '+r.status));
+      // trust server echo if provided
+      SOURCE_ENV = (j.source_env || SOURCE_ENV).toUpperCase();
+      if (fromHelp) fromHelp.textContent = `Roles are loaded from ${SOURCE_ENV}.`;
+      ALL_ROLES = (j.roles || []);
+      FILTERED = ALL_ROLES.slice();
+      drawRoles();
+      // rerun preview if target already chosen
+      runPreview();
+    }catch(e){
+      rolesWrap.innerHTML = `<div class="p-3 text-danger">Failed to load roles: ${html(e.message)}</div>`;
+    }
+  }
+
+  function drawRoles(){
+    const q = (filterInput.value || '').trim().toLowerCase();
+    FILTERED = !q ? ALL_ROLES.slice() : ALL_ROLES.filter(x => (x.role||'').toLowerCase().includes(q) || (x.description||'').toLowerCase().includes(q));
+    rolesWrap.innerHTML = FILTERED.map(r => {
+      const id = 'r_' + r.role.replace(/[^A-Za-z0-9_]+/g,'_');
+      const checked = SELECTED.has(r.role) ? 'checked' : '';
+      return `<label class="d-flex align-items-start gap-2 px-3 py-2 border-bottom user-select-none" for="${id}">
+        <input type="checkbox" class="form-check-input mt-1" id="${id}" data-role="${html(r.role)}" ${checked}>
+        <div><div class="fw-semibold">${html(r.role)}</div><div class="text-muted small">${html(r.description||'')}</div></div>
+      </label>`;
+    }).join('') || `<div class="p-3 text-muted">No roles match.</div>`;
+
+    // attach listeners
+    rolesWrap.querySelectorAll('input[type=checkbox]').forEach(cb => {
+      cb.onchange = () => {
+        const role = cb.getAttribute('data-role');
+        if(cb.checked) SELECTED.add(role); else SELECTED.delete(role);
+      };
+    });
+  }
+
+  filterInput.addEventListener('input', drawRoles);
+
+  // Load environments from Setup IFS (robust parser)
+  async function loadEnvs(){
+    try{
+      const r = await fetch('/dashboard/api/setup-ifs/envs', {headers:{'Accept':'application/json'}});
+      const j = await r.json();
+      const { names, defaultName } = extractEnvNames(j);
+
+      // Target dropdown
+      let optsT = `<option value="" selected>Pick an environment…</option>`;
+      optsT += names.map(n => `<option value="${html(n)}">${html(n)}</option>`).join('');
+      envSelect.innerHTML = optsT;
+
+      // preselect default target if provided
+      if (defaultName && names.includes(defaultName)) envSelect.value = defaultName;
+
+      // Source dropdown
+      let optsS = names.map(n => `<option value="${html(n)}">${html(n)}</option>`).join('');
+      sourceSelect.innerHTML = optsS || `<option value="DEV" selected>DEV</option>`;
+
+      // default SOURCE = DEV if available, else use defaultName, else first name
+      if (names.includes('DEV')) SOURCE_ENV = 'DEV';
+      else if (defaultName && names.includes(defaultName)) SOURCE_ENV = defaultName;
+      else if (names.length) SOURCE_ENV = names[0];
+      sourceSelect.value = SOURCE_ENV;
+      if (fromHelp) fromHelp.textContent = `Roles will be loaded from ${SOURCE_ENV}.`;
+    }catch(e){
+      envSelect.innerHTML = `<option value="" selected>Error loading envs</option>`;
+      sourceSelect.innerHTML = `<option value="DEV" selected>DEV</option>`;
+      SOURCE_ENV = 'DEV';
+    }
+  }
+
+  function extractEnvNames(j){
+    // Return { names: ["DEV","CFG",...], defaultName?: "CFG" }
+    const ignore = new Set(['active_env','active_export_env','active_import_env','default_env','environments']);
+    let names = [];
+    let defaultName = null;
+
+    // common shape: { environments: { DEV:{...}, CFG:{...} }, default_env:"CFG", ... }
+    if (j && typeof j === 'object' && j.environments && typeof j.environments === 'object'){
+      names = Object.keys(j.environments);
+      if (typeof j.default_env === 'string') defaultName = j.default_env;
+      return { names, defaultName };
+    }
+
+    // sometimes: { envs: [{name:"DEV"}, {name:"CFG"}], default_env:"CFG" }
+    if (Array.isArray(j?.envs)){
+      names = j.envs.map(v => v?.name || v?.id || v?.env).filter(Boolean);
+      if (typeof j.default_env === 'string') defaultName = j.default_env;
+      return { names, defaultName };
+    }
+
+    // fallback: object of envs at top level; drop known metadata keys
+    if (j && typeof j === 'object'){
+      names = Object.keys(j).filter(k => !ignore.has(k) && typeof j[k] === 'object');
+      if (typeof j.default_env === 'string') defaultName = j.default_env;
+      return { names, defaultName };
+    }
+
+    // last resort: array of names
+    if (Array.isArray(j)){
+      names = j.map(v => (v && (v.name || v.env || v.id)) ).filter(Boolean);
+      return { names, defaultName };
+    }
+
+    return { names: [], defaultName: null };
+  }
+
+  // Step navigation
+  backBtn.onclick = () => { step1.classList.remove('d-none'); step2.classList.add('d-none'); };
+  nextBtn.onclick = () => {
+    if(SELECTED.size === 0){ showAlert('warning','Please select at least one role.'); return; }
+    step1.classList.add('d-none'); step2.classList.remove('d-none');
+    runPreview(); // auto-run if env already chosen
+  };
+
+  envSelect.onchange = runPreview;
+
+  // When Source changes: clear selection, reload roles, refresh preview
+  sourceSelect.addEventListener('change', () => {
+    SOURCE_ENV = (sourceSelect.value || 'DEV').toUpperCase();
+    SELECTED.clear();
+    loadRoles();
+  });
+
+  async function runPreview(){
+    hideAlert();
+    const target = envSelect.value;
+    if(!target || SELECTED.size === 0){
+      previewBox.innerHTML = 'Select roles and environments to preview.';
+      return;
+    }
+    try{
+      previewBox.innerHTML = '<div class="text-muted">Checking roles…</div>';
+      const r = await fetch('/dashboard/api/deploy/preview-target', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','Accept':'application/json'},
+        body: JSON.stringify({ source_env: SOURCE_ENV, target_env: target, roles: Array.from(SELECTED) })
+      });
+      const j = await r.json();
+      if(!r.ok || !j.ok){ throw new Error((j && (j.error || j.details)) || ('HTTP '+r.status)); }
+      const items = (j.preview && j.preview.items) || [];
+      previewBox.innerHTML = items.map(it => {
+        const st = (it.status || 'unknown').toUpperCase();
+        const badgeClass = st === 'REPLACE' ? 'text-bg-warning' : (st === 'NEW' ? 'text-bg-success' : 'text-bg-secondary');
+        return `<div class="d-flex align-items-center gap-2 py-1 border-bottom">
+          <span class="small">${html(it.role)}</span>
+          <span class="badge ${badgeClass} ms-auto">${html(st)}</span>
+        </div>`;
+      }).join('') || 'No data.';
+    }catch(e){
+      previewBox.innerHTML = `<div class="text-danger">Preview failed: ${html(e.message)}</div>`;
+    }
+  }
+
+  // Finish -> export from SOURCE_ENV and save chosen target env
+  finishBtn.onclick = async () => {
+    hideAlert();
+    if(SELECTED.size === 0){ showAlert('warning','Please select at least one role.'); return; }
+    const target = envSelect.value || '';
+    try{
+      finishBtn.disabled = true;
+      finishBtn.textContent = 'Creating…';
+      const r = await fetch('/dashboard/api/deploy/export/finalize', {
+        method:'POST',
+        headers: {'Content-Type':'application/json','Accept':'application/json'},
+        body: JSON.stringify({
+          roles: Array.from(SELECTED),
+          user_grants: inclUsers.checked,
+          user_group_grants: inclGroups.checked,
+          source_env: SOURCE_ENV,
+          target_env: target
+        })
+      });
+      const j = await r.json();
+      if(!r.ok){ throw new Error(j.error || ('HTTP '+r.status)); }
+      showAlert('success', 'Delivery created. You can migrate it from the Deliveries page.');
+      // optional: redirect
+      setTimeout(() => { window.location.href = '/dashboard/deployment/deliveries'; }, 700);
+    }catch(e){
+      showAlert('danger', 'Create failed: ' + e.message);
+    }finally{
+      finishBtn.disabled = false;
+      finishBtn.textContent = 'Finish';
+    }
+  };
+
+  // Kickoff: load envs first, then roles from chosen source
+  (async function init(){
+    await loadEnvs();
+    await loadRoles();
+  })();
+</script>

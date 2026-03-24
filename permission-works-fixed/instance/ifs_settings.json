@@ -1,0 +1,70 @@
+{
+  "active_env": "DEV",
+  "active_export_env": "DEV",
+  "active_import_env": "DEV",
+  "environments": {
+    "CFG": {
+      "base_root": "https://aagl-cfg.ifs.cloud/",
+      "realm": "aaglcfg1",
+      "client_id": "IFS_boomi",
+      "client_secret": "Bi3yHUf2LvUK79HBYW0n",
+      "scope": "openid microprofile-jwt",
+      "ssl_verify": true,
+      "odata_prefix": "ifsfoundation",
+      "fndtemplobs_url": "",
+      "token_url": "https://aagl-cfg.ifs.cloud/auth/realms/aaglcfg1/protocol/openid-connect/token",
+      "cfg_base_root": "https://aagl-cfg.ifs.cloud/",
+      "cfg_realm": "aaglcfg1",
+      "cfg_client_id": "IFS_boomi",
+      "cfg_client_secret": "Bi3yHUf2LvUK79HBYW0n",
+      "cfg_scope": "openid microprofile-jwt",
+      "cfg_ssl_verify": true,
+      "cfg_odata_prefix": "ifsfoundation",
+      "cfg_fndtemplobs_url": "",
+      "cfg_token_url": "https://aagl-cfg.ifs.cloud/auth/realms/aaglcfg1/protocol/openid-connect/token"
+    },
+    "DEV": {
+      "base_root": "https://pyse8ne-dev1.build.ifs.cloud/",
+      "realm": "pyse8nedev1",
+      "client_id": "IFS_boomi",
+      "client_secret": "ji4llAnnjf9q78nzYzV1",
+      "scope": "openid microprofile-jwt",
+      "ssl_verify": true,
+      "odata_prefix": "",
+      "fndtemplobs_url": "",
+      "token_url": "https://pyse8ne-dev1.build.ifs.cloud/auth/realms/pyse8nedev1/protocol/openid-connect/token",
+      "cfg_base_root": "https://pyse8ne-dev1.build.ifs.cloud/",
+      "cfg_realm": "pyse8nedev1",
+      "cfg_client_id": "IFS_boomi",
+      "cfg_client_secret": "ji4llAnnjf9q78nzYzV1",
+      "cfg_scope": "openid microprofile-jwt",
+      "cfg_ssl_verify": true,
+      "cfg_odata_prefix": "",
+      "cfg_fndtemplobs_url": "",
+      "cfg_token_url": "https://pyse8ne-dev1.build.ifs.cloud/auth/realms/pyse8nedev1/protocol/openid-connect/token"
+    },
+    "PROD": {
+      "cfg_base_root": "",
+      "cfg_realm": "",
+      "cfg_client_id": "",
+      "cfg_client_secret": "",
+      "cfg_scope": "openid microprofile-jwt",
+      "cfg_ssl_verify": true,
+      "cfg_odata_prefix": "",
+      "cfg_fndtemplobs_url": "",
+      "cfg_token_url": ""
+    },
+    "default": {
+      "cfg_base_root": "",
+      "cfg_realm": "",
+      "cfg_client_id": "",
+      "cfg_client_secret": "",
+      "cfg_scope": "openid microprofile-jwt",
+      "cfg_ssl_verify": true,
+      "cfg_odata_prefix": "",
+      "cfg_fndtemplobs_url": "",
+      "cfg_token_url": ""
+    }
+  },
+  "default_env": "DEV"
+}

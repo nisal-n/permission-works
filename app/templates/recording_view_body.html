@@ -1,0 +1,10 @@
+<div class="card p-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">{{ filename }}</h5>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('dashboard.dash_recordings') }}" class="btn btn-outline-secondary btn-sm">Back to list</a>
+      <a href="{{ download_url }}" class="btn btn-primary btn-sm">Download</a>
+    </div>
+  </div>
+  <video controls preload="metadata" style="width:100%; max-height:70vh; background:#000; border-radius:12px;" src="{{ stream_url }}"></video>
+</div>

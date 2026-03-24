@@ -1,0 +1,194 @@
+<div class="mb-3 d-flex justify-content-end">
+  <a class="btn btn-primary btn-lg" href="{{ url_for('dashboard.dash_create_delivery_wizard') }}">Create a Delivery</a>
+</div>
+
+<div id="alert" class="alert d-none" role="alert"></div>
+
+<div id="cards" class="row g-3"></div>
+
+<hr class="my-4"/>
+
+<h5 class="mb-3">Delivery History</h5>
+<div class="table-responsive">
+  <table class="table table-sm align-middle" id="historyTable">
+    <thead class="table-light">
+      <tr>
+        <th style="width: 20%">Version</th>
+        <th style="width: 24%">From → To</th>
+        <th style="width: 14%">Mode</th>
+        <th style="width: 22%">When</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="historyBody">
+      <tr><td colspan="5" class="text-muted">No migrations yet.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+  const alertEl = document.getElementById('alert');
+  function showAlert(type, msg) {
+    alertEl.className = 'alert alert-' + type;
+    alertEl.textContent = msg;
+    alertEl.classList.remove('d-none');
+  }
+  function hideAlert(){ alertEl.classList.add('d-none'); }
+  function html(s){ return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+  async function loadDeliveries() {
+    hideAlert();
+    try{
+      const r = await fetch('/dashboard/api/deliveries/list', { headers: {'Accept':'application/json'}});
+      const j = await r.json();
+      if(!r.ok){ throw new Error((j && j.error) || ('HTTP '+r.status)); }
+      renderCards(j.deliveries || []);
+      renderHistory(j.deliveries || []);
+    }catch(e){
+      showAlert('danger', 'Failed to load deliveries: ' + e.message);
+    }
+  }
+
+  function lastMigration(d){
+    const arr = Array.isArray(d.migrations) ? d.migrations : [];
+    if(!arr.length) return null;
+    return arr[arr.length-1];
+  }
+  function hasLive(d){
+    return (d.migrations || []).some(m => (m.to || '').toUpperCase() === 'LIVE');
+  }
+
+  function renderCards(list){
+    const wrap = document.getElementById('cards');
+    if(!list.length){
+      wrap.innerHTML = `<div class="col-12">
+        <div class="card p-4 text-center text-muted">No deliveries yet. Create one to see it here.</div>
+      </div>`;
+      return;
+    }
+    wrap.innerHTML = list.map(d => {
+      const btnId = `migrate_${d.version_id}`;
+      const liveBtnId = `migrate_live_${d.version_id}`;
+      const fromEnv = (d.source_env || 'DEV').toUpperCase();
+      const defaultTarget = (d.default_target_env || '').toUpperCase() || 'CFG';
+      const last = lastMigration(d);
+      const alreadyLive = hasLive(d);
+
+      // Determine the "to" to display when not yet migrated
+      const toShow = last ? (last.to || '') : defaultTarget;
+
+      const path = `
+        <div class="mt-2 small d-flex align-items-center">
+          <span class="badge text-bg-secondary">${html(fromEnv)}</span>
+          <span class="mx-2">→</span>
+          <span class="badge ${last ? 'text-bg-success' : 'text-bg-primary'}">${html(toShow)}</span>
+          ${last ? `<span class="ms-2 badge text-bg-success">Migrated</span>` : ``}
+          ${alreadyLive ? `<span class="ms-2 badge text-bg-danger">LIVE</span>` : ``}
+        </div>`;
+
+      // Buttons
+      let btns = '';
+      if (!last) {
+        btns = `<button id="${btnId}" class="btn btn-outline-primary btn-sm" onclick="migrateTo('${d.version_id}', '${toShow}', '${btnId}')">Migrate</button>`;
+      } else if (!alreadyLive) {
+        btns = `<button id="${liveBtnId}" class="btn btn-danger btn-sm" onclick="migrateTo('${d.version_id}', 'LIVE', '${liveBtnId}')">Migrate to LIVE</button>`;
+      } else {
+        btns = `<span class="text-muted small">Already migrated to LIVE.</span>`;
+      }
+
+      return `<div class="col-12 col-md-6 col-xl-3">
+        <div class="card h-100 p-3">
+          <div class="d-flex align-items-start justify-content-between">
+            <h6 class="mb-2">Delivery</h6>
+            <span class="badge text-bg-success">Created</span>
+          </div>
+          <div class="text-muted small">
+            <div>Version: <code>${html(d.version_id)}</code></div>
+            <div>Created: ${html(d.created_at || '')}</div>
+            ${path}
+          </div>
+          <div class="mt-3 d-grid">
+            ${btns}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderHistory(list){
+    const body = document.getElementById('historyBody');
+    const rows = [];
+    (list || []).forEach(d => {
+      const src = (d.source_env || 'DEV').toUpperCase();
+      (d.migrations || []).forEach(m => {
+        const when = new Date((m.ts || 0) * 1000);
+        rows.push({
+          version: d.version_id,
+          from: src,
+          to: (m.to || ''),
+          mode: (m.mode || '').toUpperCase(),
+          when_ts: m.ts || 0,
+          when_txt: when && !isNaN(when) ? when.toLocaleString() : '',
+          status: m.status || 'ok'
+        });
+      });
+    });
+    rows.sort((a,b) => b.when_ts - a.when_ts);
+    if(!rows.length){
+      body.innerHTML = `<tr><td colspan="5" class="text-muted">No migrations yet.</td></tr>`;
+      return;
+    }
+    body.innerHTML = rows.map(r => `
+      <tr>
+        <td><code>${html(r.version)}</code></td>
+        <td><span class="badge text-bg-secondary">${html(r.from)}</span> <span class="mx-2">→</span> <span class="badge ${r.to.toUpperCase()==='LIVE' ? 'text-bg-danger' : 'text-bg-primary'}">${html(r.to)}</span></td>
+        <td>${html(r.mode)}</td>
+        <td>${html(r.when_txt)}</td>
+        <td><span class="badge ${r.status==='ok' ? 'text-bg-success' : 'text-bg-warning'}">${html(r.status)}</span></td>
+      </tr>
+    `).join('');
+  }
+
+  function formatDetails(detail){
+    if(!detail) return '';
+    const parts = [];
+    if(detail.where)  parts.push(`at ${detail.where}`);
+    if(detail.status) parts.push(`HTTP ${detail.status}`);
+    if(detail.url)    parts.push(`url: ${detail.url}`);
+    if(detail.text){
+      let t = String(detail.text).replace(/\s+/g,' ').trim();
+      if(t.length > 300) t = t.slice(0,300) + '…';
+      parts.push(t);
+    }
+    return parts.join(' | ');
+  }
+
+  async function migrateTo(versionId, target, btnId){
+    hideAlert();
+    const btn = document.getElementById(btnId);
+    const prev = btn ? btn.textContent : '';
+    try{
+      if(btn){ btn.disabled = true; btn.textContent = 'Migrating…'; }
+      const r = await fetch('/dashboard/api/deliveries/migrate-cfg', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','Accept':'application/json'},
+        body: JSON.stringify({ version_id: versionId, target_env: target })
+      });
+      const j = await r.json();
+      if(!r.ok){
+        const msg = `Migration failed (${j.mode || 'xml'}): ${(j && j.error) || ('HTTP '+r.status)}`
+                    + (j && j.details ? ` — ${formatDetails(j.details)}` : '');
+        showAlert('danger', msg);
+        return;
+      }
+      showAlert('success', j.message || (`Migrated ${versionId} to ${target}.`));
+      await loadDeliveries();
+    }catch(e){
+      showAlert('danger', 'Migration failed: ' + e.message);
+    }finally{
+      if(btn){ btn.disabled = false; btn.textContent = prev || 'Migrate'; }
+    }
+  }
+
+  loadDeliveries();
+</script>

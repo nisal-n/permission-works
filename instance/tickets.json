@@ -1,0 +1,28 @@
+{
+  "next_counter": 2,
+  "tickets": {
+    "PW-001": {
+      "id": "PW-001",
+      "user_id": "admin",
+      "subject": "Cannot grant Quick Reports",
+      "priority": "High",
+      "description": "Cannot grant quick reports, 405 error returned",
+      "created_ts": 1759223092,
+      "messages": [
+        {
+          "author": "admin",
+          "text": "Cannot grant quick reports, 405 error returned",
+          "ts": 1759223092,
+          "system": false
+        },
+        {
+          "author": "system",
+          "text": "Thanks! We\u2019ll keep you updated and will start looking into your issue ASAP.",
+          "ts": 1759223092,
+          "system": true
+        }
+      ],
+      "status": "Open"
+    }
+  }
+}

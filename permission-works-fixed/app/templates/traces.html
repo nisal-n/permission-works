@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Permission Works - Trace Capture</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    body{background:#f8f9fa}
+    .header{background:#fff;border-bottom:2px solid #dee2e6;padding:16px 10px;margin-bottom:20px;text-align:center}
+    .header h1{margin:0;font-size:1.8rem;font-weight:700}
+    .header .brand{color:#6a0dad}
+    .controls .btn{min-width:140px;margin:2px}
+
+    /* GIF stage (only used while recording) */
+    .gif-stage{
+      background:#fff;
+      border-radius:12px;
+      box-shadow:0 1px 10px rgba(0,0,0,.06);
+      padding:16px 20px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      min-height:300px;
+      position:relative; /* for REC badge */
+    }
+    .gif-stage img{
+      height:250px;     /* fixed height */
+      width:auto;       /* keep aspect */
+      max-width:100%;   /* responsive */
+      border-radius:10px;
+      display:block;
+    }
+    .gif-caption{ margin-top:12px; font-size:1rem; color:#495057; text-align:center; }
+    .gif-sub{ margin-top:4px; color:#6c757d; font-size:.9rem; text-align:center; }
+
+    /* REC badge inside GIF panel (only shown while recording) */
+    .rec-badge{
+      position:absolute;
+      top:12px; left:16px;
+      display:flex; align-items:center; gap:8px;
+      background:rgba(255,255,255,.9);
+      border:2px solid #212529;
+      border-radius:12px;
+      padding:6px 10px;
+      box-shadow:0 1px 6px rgba(0,0,0,.08);
+      font-weight:700; color:#212529; letter-spacing:.5px;
+      user-select:none;
+    }
+    .rec-dot{ width:12px; height:12px; background:#e60023; border-radius:50%; animation:recblink 1s infinite; }
+    @keyframes recblink{ 0%,100%{opacity:1} 50%{opacity:.15} }
+
+    .idle-card .lead{font-weight:600}
+
+    /* ---------- Brand colors + disabled goes gray ---------- */
+    :root{ --brand-purple:#6a0dad; }
+
+    /* Summary (outline-primary) as brand purple */
+    .btn-outline-primary{
+      --bs-btn-color:var(--brand-purple);
+      --bs-btn-border-color:var(--brand-purple);
+      --bs-btn-hover-bg:var(--brand-purple);
+      --bs-btn-hover-border-color:var(--brand-purple);
+      --bs-btn-active-bg:var(--brand-purple);
+      --bs-btn-active-border-color:var(--brand-purple);
+      --bs-btn-focus-shadow-rgb:106,13,173;
+    }
+
+    /* Start (success) */
+    .btn-success{
+      --bs-btn-bg:#22A06B;
+      --bs-btn-border-color:#22A06B;
+      --bs-btn-hover-bg:#198754;
+      --bs-btn-hover-border-color:#198754;
+      --bs-btn-focus-shadow-rgb:34,160,107;
+    }
+
+    /* Stop (danger) */
+    .btn-danger{
+      --bs-btn-bg:#DC3545;
+      --bs-btn-border-color:#DC3545;
+      --bs-btn-hover-bg:#BB2D3B;
+      --bs-btn-hover-border-color:#BB2D3B;
+      --bs-btn-focus-shadow-rgb:220,53,69;
+    }
+
+    /* Reset (warning) */
+    .btn-warning{
+      --bs-btn-color:#212529; /* dark text for contrast */
+      --bs-btn-bg:#FFC107;
+      --bs-btn-border-color:#FFC107;
+      --bs-btn-hover-bg:#E0A800;
+      --bs-btn-hover-border-color:#E0A800;
+      --bs-btn-focus-shadow-rgb:255,193,7;
+    }
+
+    /* Disabled buttons (anchors & buttons): always neutral gray */
+    .btn.disabled,
+    .btn[aria-disabled="true"],
+    button.btn:disabled{
+      background-color:#adb5bd !important;
+      border-color:#adb5bd !important;
+      color:#fff !important;
+      pointer-events:none;
+      opacity:1 !important;
+    }
+    .btn.disabled:hover,
+    .btn[aria-disabled="true"]:hover,
+    button.btn:disabled:hover,
+    .btn.disabled:focus,
+    .btn[aria-disabled="true"]:focus,
+    button.btn:disabled:focus{
+      background-color:#adb5bd !important;
+      border-color:#adb5bd !important;
+      color:#fff !important;
+      box-shadow:none !important;
+    }
+    /* Outline variants collapse to gray when disabled */
+    .btn-outline-primary.disabled,
+    .btn-outline-primary[aria-disabled="true"]{
+      background-color:#adb5bd !important;
+      border-color:#adb5bd !important;
+      color:#fff !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Permission Works <span class="brand">OasisPro</span></h1>
+      <p class="text-muted mb-0">IFS Trace Capture Utility</p>
+    </div>
+
+    <!-- Top controls -->
+    <div class="d-flex justify-content-center mb-3 flex-wrap controls">
+      <!-- Start: enabled only when NOT tracing -->
+      <a
+        href="/start_trace"
+        id="btnStart"
+        class="btn btn-success btn-lg {% if is_tracing %}disabled{% endif %}"
+        {% if is_tracing %}aria-disabled="true" tabindex="-1"{% endif %}
+        data-default-base="{{ default_base or '' }}">Start</a>
+
+
+      <!-- Stop: enabled only when tracing; shows spinner on click -->
+      <a
+        href="/stop_trace"
+        id="btnStop"
+        class="btn btn-danger btn-lg {% if not is_tracing %}disabled{% endif %}"
+        {% if not is_tracing %}aria-disabled="true" tabindex="-1"{% endif %}
+      >
+        <span class="stop-label">Stop</span>
+      </a>
+
+      <!-- Reset: enabled only when tracing -->
+      <form action="/reset_trace" method="post" class="d-inline">
+        <button
+          type="submit"
+          id="btnReset"
+          class="btn btn-warning btn-lg"
+          {% if not is_tracing %}disabled{% endif %}
+        >Reset &amp; Start New Trace</button>
+      </form>
+
+      <!-- <a href="/create_permission_ui" class="btn btn-outline-primary btn-lg">Summary</a> -->
+    </div>
+
+    {% if is_tracing %}
+      <!-- Recording: show GIF + REC badge and helper text -->
+      <div class="gif-stage">
+        <div class="rec-badge">
+          <span class="rec-dot"></span><span>REC</span>
+        </div>
+
+        <img src="{{ url_for('static', filename='replay.gif') }}" alt="Recording walkthrough">
+
+        <div class="gif-caption">
+          Go to your default IFS environment and start the process you need.
+        </div>
+        <div class="gif-sub">
+          Keep using IFS as usual; we’ll capture the actions in the background until you click <strong>Stop</strong>.
+        </div>
+      </div>
+    {% else %}
+      <!-- Not recording -->
+      <div class="card shadow-sm idle-card">
+        <div class="card-body py-4">
+          <p class="lead mb-1">Ready to trace a process</p>
+          <p class="text-muted mb-0">
+            Click <strong>Start</strong> above, then perform the steps in your default IFS environment.
+            Return here and click <strong>Stop</strong> to proceed with the summary and grants.
+          </p>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if is_tracing %}
+  <!-- Optional light keep-alive while recording -->
+  <script>
+    setInterval(()=>{ fetch(location.href,{headers:{"X-Requested-With":"fetch"}}).catch(()=>{}); }, 4000);
+  </script>
+  {% endif %}
+
+  <script>
+    // Spinner on STOP (only if it's enabled)
+    (function(){
+      const stop  = document.getElementById('btnStop');
+      const start = document.getElementById('btnStart');
+      const reset = document.getElementById('btnReset');
+
+      if (stop && !stop.classList.contains('disabled')) {
+        stop.addEventListener('click', function (e) {
+          // prevent double clicks
+          if (stop.dataset.loading === '1') return;
+          stop.dataset.loading = '1';
+
+          // disable other controls immediately (render gray)
+          if (start) {
+            start.classList.add('disabled');
+            start.setAttribute('aria-disabled','true');
+            start.setAttribute('tabindex','-1');
+          }
+          if (reset) {
+            reset.setAttribute('disabled','disabled');
+          }
+
+          // show spinner inside Stop, then navigate
+          e.preventDefault();
+          stop.innerHTML =
+            '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>' +
+            'Stopping...';
+
+          // navigate to /stop_trace (server will redirect to summary)
+          window.location.href = stop.getAttribute('href');
+        }, { passive: false });
+      }
+    })();
+  </script>
+  <script>
+    // Open default IFS base in a new tab when Start is clicked (and still navigate to /start_trace)
+    (function(){
+      const start = document.getElementById('btnStart');
+      if (start && !start.classList.contains('disabled')) {
+        start.addEventListener('click', function(){
+          const base = (start.getAttribute('data-default-base') || '').trim();
+          if (base) {
+            try { window.open(base, '_blank', 'noopener'); } catch(_) {}
+          }
+          // normal navigation to /start_trace continues
+        });
+      }
+    })();
+  </script>
+
+</body>
+</html>

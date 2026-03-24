@@ -1,0 +1,24 @@
+{
+  "backup": {
+    "path": "backup/pw_251006_200826.zip",
+    "roles": [
+      "PWS_AUDITOR"
+    ],
+    "count": 1,
+    "target_env": "CFG",
+    "ok": true,
+    "error": null
+  },
+  "version_id": "pw_251006_200826",
+  "source_env": "DEV",
+  "created_ts": 1759761506.8356807,
+  "default_target_env": "CFG",
+  "migrations": [
+    {
+      "to": "CFG",
+      "mode": "xml",
+      "ts": 1759761553.535802,
+      "status": "ok"
+    }
+  ]
+}

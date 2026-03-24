@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title or "PermissionWorks OasisPro" }}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body{background:#f5f7fb}
+    .sidebar{min-width:260px; max-width:260px; background:#fff; border-right:1px solid #e9ecef}
+    .sidebar .brand{font-weight:700; font-size:1.1rem}
+    .nav-link{border-radius:.5rem; color:#334155}
+    .nav-link.active, .nav-link:hover{background:#edf2ff; color:#1e40af}
+    .content{flex:1; padding:24px}
+    .card{border:none; box-shadow:0 8px 20px rgba(0,0,0,.05)}
+    .section-title{font-weight:700}
+    .subtle{color:#64748b}
+    .chip{display:inline-block; padding:.15rem .5rem; background:#eef2ff; color:#3730a3; border-radius:999px; font-size:.75rem}
+    .topbar{background:#fff; border-bottom:1px solid #e9ecef}
+    .iframe-wrap{height: calc(100vh - 220px);}
+    .iframe-wrap iframe{width:100%; height:100%; border:0; border-radius: .75rem; background:#fff; box-shadow:0 8px 20px rgba(0,0,0,.05)}
+  </style>
+</head>
+<body>
+  {% block body %}{% endblock %}
+  <script>
+    const links = document.querySelectorAll('.nav-link');
+    links.forEach(a => { if (a.getAttribute('href') === window.location.pathname) a.classList.add('active'); });
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

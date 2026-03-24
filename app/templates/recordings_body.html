@@ -1,0 +1,40 @@
+<div class="card p-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">Saved Recordings</h5>
+    <span class="text-muted small">{{ recordings|length }} file(s)</span>
+  </div>
+
+  {% if recordings %}
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead>
+        <tr>
+          <th>File</th>
+          <th>Mode</th>
+          <th>Permission Set</th>
+          <th>Saved</th>
+          <th>Size</th>
+          <th class="text-end">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for item in recordings %}
+        <tr>
+          <td><strong>{{ item.name }}</strong></td>
+          <td>{{ item.mode }}</td>
+          <td>{{ item.role }}</td>
+          <td>{{ item.created_label }}</td>
+          <td>{{ item.size_kb }} KB</td>
+          <td class="text-end">
+            <a href="{{ item.view_url }}" class="btn btn-sm btn-primary">View</a>
+            <a href="{{ item.download_url }}" class="btn btn-sm btn-outline-secondary">Download</a>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="text-muted">No recordings saved yet.</div>
+  {% endif %}
+</div>

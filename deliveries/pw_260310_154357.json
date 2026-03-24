@@ -1,0 +1,24 @@
+{
+  "backup": {
+    "path": "backup/pw_260310_154357.zip",
+    "roles": [
+      "PS_END_USER"
+    ],
+    "count": 1,
+    "target_env": "DEV",
+    "ok": true,
+    "error": null
+  },
+  "version_id": "pw_260310_154357",
+  "source_env": "DEV",
+  "created_ts": 1773157437.9099169,
+  "default_target_env": "DEV",
+  "migrations": [
+    {
+      "to": "DEV",
+      "mode": "xml",
+      "ts": 1773157489.9171264,
+      "status": "ok"
+    }
+  ]
+}

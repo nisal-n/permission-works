@@ -1,0 +1,384 @@
+<!-- app/templates/setup_ifs_body.html -->
+<div class="card p-4">
+  <h5 class="mb-3">Environments</h5>
+
+  <div id="env-alert" class="alert d-none" role="alert"></div>
+
+  <!-- Row: Env selector + Create -->
+  <div class="d-flex align-items-center gap-2 mb-3">
+    <label class="form-label mb-0 me-2">Select environment</label>
+    <select id="envSelect" class="form-select w-auto"></select>
+    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#envCreateModal">
+      Create New Environment
+    </button>
+  </div>
+
+  <!-- Active env form (highlight if default) -->
+  <div id="envPanel" class="border rounded p-3">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <h6 class="mb-0">Connection Settings
+        (<span id="envNameBadge" class="badge text-bg-secondary">—</span>)
+      </h6>
+      <span id="defaultFlag" class="badge text-bg-warning d-none">Default</span>
+    </div>
+
+    <form id="ifs-form" class="row g-3">
+      <div class="col-12">
+        <label class="form-label">Base Root (tenant URL)</label>
+        <input type="url" class="form-control" id="cfg_base_root" placeholder="https://tenant.example.com/">
+        <div class="form-text">Example: <code>https://tenant.example.com/</code> (Projection &amp; OData paths are derived)</div>
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">Realm</label>
+        <input type="text" class="form-control" id="cfg_realm" placeholder="your_realm">
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">Scope</label>
+        <input type="text" class="form-control" id="cfg_scope" value="openid microprofile-jwt">
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">Client ID</label>
+        <input type="text" class="form-control" id="cfg_client_id" placeholder="client id">
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">Client Secret</label>
+        <input type="password" class="form-control" id="cfg_client_secret" placeholder="client secret">
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">OData Prefix (optional)</label>
+        <input type="text" class="form-control" id="cfg_odata_prefix" placeholder="ifsfoundation">
+        <div class="form-text">If your OData service is nested (e.g., <code>/odata/v1/ifsfoundation</code>).</div>
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">Override FndTempLobs Base (optional)</label>
+        <input type="url" class="form-control" id="cfg_fndtemplobs_url" placeholder="https://.../odata/v1/ifsfoundation">
+        <div class="form-text">Set this to bypass discovery for uploads. Must be the OData service root hosting <code>FndTempLobs</code>.</div>
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">Token URL (optional)</label>
+        <input type="url" class="form-control" id="cfg_token_url" placeholder="https://.../protocol/openid-connect/token">
+        <div class="form-text">If blank, discovery uses Base Root + Realm well-known.</div>
+      </div>
+
+      <div class="col-12">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="cfg_ssl_verify" checked>
+          <label class="form-check-label" for="cfg_ssl_verify">Verify TLS certificates</label>
+        </div>
+      </div>
+
+      <div class="col-12 d-flex flex-wrap align-items-center gap-2">
+        <button type="button" id="btnSave" class="btn btn-primary">Save</button>
+
+        <!-- Removed: Reload / Make Active -->
+        <!-- <button type="button" id="btnReload" class="btn btn-outline-secondary">Reload</button> -->
+        <!-- <button type="button" id="btnMakeActive" class="btn btn-outline-success">Make Active</button> -->
+
+        <!-- Make Default: auto-disabled if already default -->
+        <button type="button" id="btnMakeDefault" class="btn btn-warning">
+          Make Default
+        </button>
+
+        <!-- Test Connection (inline) -->
+        <button type="button" id="btnTestConn" class="btn btn-outline-dark">Test Connection</button>
+        <span id="testStatus" class="ms-2"></span>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Create New Environment Modal -->
+<div class="modal fade" id="envCreateModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title">Create New Environment</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label">Environment name</label>
+        <input id="newEnvName" class="form-control" placeholder="e.g., UAT">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" id="btnCreateEnv" class="btn btn-primary">Create</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* subtle highlight when currently selected env is the default */
+  .env-default-highlight {
+    background: rgba(255, 193, 7, 0.12); /* warning-ish */
+    border-color: rgba(255, 193, 7, 0.45) !important;
+  }
+  #testStatus.badge { font-weight: 500; }
+</style>
+
+<script>
+  const A = document.getElementById('env-alert');
+  function showAlert(kind, msg){
+    A.className = 'alert alert-' + kind;
+    A.textContent = msg;
+    A.classList.remove('d-none');
+  }
+  function hideAlert(){ A.classList.add('d-none'); }
+
+  const S = {
+    panel: document.getElementById('envPanel'),
+    defaultFlag: document.getElementById('defaultFlag'),
+    select: document.getElementById('envSelect'),
+    badge: document.getElementById('envNameBadge'),
+    base_root: document.getElementById('cfg_base_root'),
+    realm: document.getElementById('cfg_realm'),
+    client_id: document.getElementById('cfg_client_id'),
+    client_secret: document.getElementById('cfg_client_secret'),
+    scope: document.getElementById('cfg_scope'),
+    ssl_verify: document.getElementById('cfg_ssl_verify'),
+    odata_prefix: document.getElementById('cfg_odata_prefix'),
+    fndtemplobs_url: document.getElementById('cfg_fndtemplobs_url'),
+    token_url: document.getElementById('cfg_token_url'),
+    newEnvName: document.getElementById('newEnvName'),
+    btnMakeDefault: document.getElementById('btnMakeDefault'),
+    btnTestConn: document.getElementById('btnTestConn'),
+    testStatus: document.getElementById('testStatus'),
+  };
+
+  let ENV_DATA = { active_env: 'CFG', active_export_env:'DEV', active_import_env:'CFG', default_env:'CFG', environments: {} };
+
+  function isDefault(name){
+    return (name && name === ENV_DATA.default_env);
+  }
+
+  function setTestStatus(state, message) {
+    // states: 'idle', 'testing', 'ok', 'fail'
+    const el = S.testStatus;
+    el.className = ''; // reset
+    el.textContent = '';
+    if (state === 'testing') {
+      el.className = 'badge text-bg-info';
+      el.textContent = message || 'Testing...';
+    } else if (state === 'ok') {
+      el.className = 'badge text-bg-success';
+      el.textContent = message || 'Connection Successful';
+    } else if (state === 'fail') {
+      el.className = 'badge text-bg-danger';
+      el.textContent = message || 'Connection failed';
+    } else {
+      // idle
+      el.className = '';
+      el.textContent = '';
+    }
+  }
+
+  function getSelectedEnvName() {
+    return S.select.value || ENV_DATA.active_env || ENV_DATA.default_env;
+  }
+
+  function populateSelect(){
+    const names = Object.keys(ENV_DATA.environments).sort((a,b)=>{
+      if (a === ENV_DATA.default_env) return -1;
+      if (b === ENV_DATA.default_env) return 1;
+      return a.localeCompare(b);
+    });
+    S.select.innerHTML = names.map(n => {
+      const sel = (n === (S.select.value || ENV_DATA.active_env)) ? 'selected' : '';
+      const label = isDefault(n) ? `${n} (default)` : n;
+      return `<option value="${n}" ${sel}>${label}</option>`;
+    }).join('');
+    updateBadgeAndHighlight();
+  }
+
+  function updateBadgeAndHighlight(){
+    const name = getSelectedEnvName() || '—';
+    S.badge.textContent = name;
+
+    // default visuals
+    if(isDefault(name)){
+      S.defaultFlag.classList.remove('d-none');
+      S.panel.classList.add('env-default-highlight');
+      S.btnMakeDefault.disabled = true;   // <-- disable button if already default
+      S.btnMakeDefault.title = 'Already default';
+    }else{
+      S.defaultFlag.classList.add('d-none');
+      S.panel.classList.remove('env-default-highlight');
+      S.btnMakeDefault.disabled = false;
+      S.btnMakeDefault.title = '';
+    }
+  }
+
+  function fillFormFromEnv(name){
+    const e = (ENV_DATA.environments && ENV_DATA.environments[name]) || {};
+    // prefer generic keys, fallback to cfg_*
+    S.base_root.value = e.base_root || e.cfg_base_root || '';
+    S.realm.value = e.realm || e.cfg_realm || '';
+    S.client_id.value = e.client_id || e.cfg_client_id || '';
+    S.client_secret.value = e.client_secret || e.cfg_client_secret || '';
+    S.scope.value = e.scope || e.cfg_scope || 'openid microprofile-jwt';
+    S.ssl_verify.checked = !!(e.ssl_verify ?? e.cfg_ssl_verify ?? true);
+    S.odata_prefix.value = e.odata_prefix || e.cfg_odata_prefix || '';
+    S.fndtemplobs_url.value = e.fndtemplobs_url || e.cfg_fndtemplobs_url || '';
+    S.token_url.value = e.token_url || e.cfg_token_url || '';
+    updateBadgeAndHighlight();
+  }
+
+  function testUrlForEnv(_name){
+    return '/dashboard/api/setup-ifs/envs/test';
+  }
+
+  async function testConnection(name){
+    const url = testUrlForEnv(name);
+    setTestStatus('testing', 'Testing...');
+    S.btnTestConn.disabled = true;
+
+    try{
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+
+      // Always attempt to read JSON; backend replies 200 with {"ok": false} on logical failures
+      let j = {};
+      try { j = await r.json(); } catch {}
+
+      if (j && j.ok === true) {
+        setTestStatus('ok', 'Connection Successful');
+      } else {
+        const msg = (j && (j.error || j.message)) || ('HTTP ' + r.status);
+        setTestStatus('fail', msg || 'Connection failed');
+      }
+    } catch (e) {
+      setTestStatus('fail', e.message || 'Connection failed');
+    } finally {
+      S.btnTestConn.disabled = false;
+    }
+  }  
+
+  async function loadAll(){
+    hideAlert();
+    try{
+      const r = await fetch('/dashboard/api/setup-ifs/envs', {headers:{'Accept':'application/json'}});
+      if(!r.ok) throw new Error('Load failed: HTTP '+r.status);
+      const j = await r.json();
+      ENV_DATA = j;
+      if(!S.select.value) S.select.value = ENV_DATA.active_env || ENV_DATA.default_env;
+      populateSelect();
+      const pick = getSelectedEnvName();
+      fillFormFromEnv(pick);
+      // auto test the selected env
+      testConnection(pick);
+    }catch(e){
+      showAlert('danger', e.message);
+      setTestStatus('fail', 'Load failed');
+    }
+  }
+
+  async function saveCurrent(){
+    hideAlert();
+    const envName = getSelectedEnvName();
+    const payload = {
+      base_root: S.base_root.value.trim(),
+      realm: S.realm.value.trim(),
+      client_id: S.client_id.value.trim(),
+      client_secret: S.client_secret.value,
+      scope: S.scope.value.trim() || 'openid microprofile-jwt',
+      ssl_verify: !!S.ssl_verify.checked,
+      odata_prefix: S.odata_prefix.value.trim(),
+      fndtemplobs_url: S.fndtemplobs_url.value.trim(),
+      token_url: S.token_url.value.trim(),
+      // keep cfg_* mirrors for compatibility
+      cfg_base_root: S.base_root.value.trim(),
+      cfg_realm: S.realm.value.trim(),
+      cfg_client_id: S.client_id.value.trim(),
+      cfg_client_secret: S.client_secret.value,
+      cfg_scope: S.scope.value.trim() || 'openid microprofile-jwt',
+      cfg_ssl_verify: !!S.ssl_verify.checked,
+      cfg_odata_prefix: S.odata_prefix.value.trim(),
+      cfg_fndtemplobs_url: S.fndtemplobs_url.value.trim(),
+      cfg_token_url: S.token_url.value.trim(),
+    };
+    try{
+      const r = await fetch('/dashboard/api/setup-ifs/envs/' + encodeURIComponent(envName), {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','Accept':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const j = await r.json();
+      if(!r.ok || !j.ok){ throw new Error((j && (j.error || j.message)) || ('HTTP '+r.status)); }
+      showAlert('success', 'Settings saved for ' + envName + '.');
+      await loadAll();                   // refresh list + forms
+      S.select.value = envName;
+      fillFormFromEnv(envName);
+      testConnection(envName);           // retest after save
+    }catch(e){
+      showAlert('danger', 'Save failed: ' + e.message);
+      setTestStatus('fail', 'Save failed');
+    }
+  }
+
+  async function makeDefault(){
+    hideAlert();
+    const envName = getSelectedEnvName();
+    try{
+      const r = await fetch('/dashboard/api/setup-ifs/envs/default', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','Accept':'application/json'},
+        body: JSON.stringify({ name: envName })
+      });
+      const j = await r.json();
+      if(!r.ok || !j.ok){ throw new Error((j && (j.error || j.message)) || ('HTTP '+r.status)); }
+      showAlert('success', envName + ' set as default.');
+      await loadAll();                   // this will also re-test
+    }catch(e){
+      showAlert('danger', e.message);
+    }
+  }
+
+  async function createEnv(){
+    hideAlert();
+    const name = (S.newEnvName.value || '').trim();
+    if(!name){ showAlert('warning','Please enter a name.'); return; }
+    try{
+      const r = await fetch('/dashboard/api/setup-ifs/envs/create', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','Accept':'application/json'},
+        body: JSON.stringify({ name })
+      });
+      const j = await r.json();
+      if(!r.ok || !j.ok){ throw new Error((j && (j.error || j.message)) || ('HTTP '+r.status)); }
+      S.newEnvName.value = '';
+      const m = bootstrap.Modal.getInstance(document.getElementById('envCreateModal'));
+      if(m){ m.hide(); }
+      showAlert('success', 'Environment created.');
+      await loadAll();
+      S.select.value = name;
+      fillFormFromEnv(name);
+      testConnection(name);
+    }catch(e){
+      showAlert('danger', e.message);
+      setTestStatus('fail', 'Create failed');
+    }
+  }
+
+  // Events
+  document.getElementById('btnSave').addEventListener('click', saveCurrent);
+  document.getElementById('btnCreateEnv').addEventListener('click', createEnv);
+  document.getElementById('btnMakeDefault').addEventListener('click', makeDefault);
+  document.getElementById('btnTestConn').addEventListener('click', () => testConnection(getSelectedEnvName()));
+  S.select.addEventListener('change', () => {
+    fillFormFromEnv(S.select.value);
+    testConnection(S.select.value);   // auto test when toggling environments
+  });
+
+  // Boot
+  loadAll();
+</script>

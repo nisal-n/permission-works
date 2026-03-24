@@ -1,0 +1,457 @@
+<!-- app/templates/grant_structure.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Grant Structure – {{ role }}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- (optional) Bootstrap Icons to match other screens -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+  <style>
+    :root{
+      --brand-purple: #5b2dcc;
+      --brand-purple-700:#4a22b1;
+      --brand-deep:   #3b139a;
+      --brand-accent: #7c4dff;
+      --brand-soft:   #f5f3ff;
+      --brand-soft-2: #efe9ff;
+      --brand-ink:    #1e1b2e;
+      --brand-muted:  #6b6b7a;
+
+      /* Buttons */
+      --btn-radius: .5rem;
+      --btn-font-weight: 500;
+
+      /* Surfaces */
+      --card-radius: .9rem;
+
+      /* Table */
+      --thead-bg: var(--brand-soft);
+      --row-hover: #f7f5ff;
+      --sticky-bg: #ffffff;
+    }
+
+    /* App background (match Assign Users) */
+    body{
+      background:
+        radial-gradient(1200px 600px at 20% -10%, #ede7ff 0%, transparent 60%) no-repeat,
+        radial-gradient(1000px 500px at 120% 10%, #efe9ff 0%, transparent 60%) no-repeat,
+        #faf9ff;
+      color: var(--brand-ink);
+    }
+
+    /* Page header – dark purple bar (match Assign Users) */
+    .page-header {
+      border-radius: var(--card-radius);
+      background: linear-gradient(135deg, var(--brand-purple-700) 0%, var(--brand-deep) 100%);
+      border: 1px solid rgba(255,255,255,.08);
+      padding: 1rem 1.25rem;
+      color: #fff;
+      box-shadow: 0 10px 22px rgba(59,19,154,.18), 0 2px 6px rgba(59,19,154,.12);
+    }
+    .page-header h3,
+    .page-header h3 .text-primary{
+      color: #fff !important;
+      text-decoration: none;
+    }
+    .page-header .btn{
+      border-radius: .6rem;
+      background: #fff;
+      color: var(--brand-deep);
+      border: 1px solid rgba(255,255,255,.35);
+    }
+    .page-header .btn:hover{
+      background: var(--brand-soft);
+      color: var(--brand-deep);
+      border-color: #e6e2ff;
+      box-shadow: 0 6px 14px rgba(59,19,154,.18);
+    }
+
+    /* Card polish – consistent look */
+    .card.shadow-sm{
+      border: 1px solid #ece9ff;
+      border-radius: var(--card-radius);
+      box-shadow: 0 8px 18px rgba(91,45,204,.06), 0 2px 6px rgba(91,45,204,.05) !important;
+      overflow: hidden;
+    }
+    .card-body{ background:#fff; }
+
+    /* Sticky tools row like Assign Users */
+    .sticky-topbar{
+      position: sticky; top: 0; z-index: 2;
+      background: var(--sticky-bg);
+      padding: .75rem 0;
+      border-bottom: 1px solid #ece9ff;
+      box-shadow: 0 6px 12px -10px rgba(91,45,204,.35);
+    }
+
+    /* Inputs */
+    .form-control{
+      border-radius: .6rem;
+      border-color: #e6e2ff;
+      background: #fff;
+    }
+    .form-control:focus{
+      border-color: var(--brand-accent);
+      box-shadow: 0 0 0 .16rem rgba(123, 77, 255, .15);
+    }
+
+    /* Buttons — purple theme */
+    .btn{ border-radius: var(--btn-radius); font-weight: var(--btn-font-weight); }
+    .btn-light{
+      background:#fff; border:1px solid #e6e2ff; color:var(--brand-ink);
+    }
+    .btn-light:hover{
+      background: var(--brand-soft);
+      border-color: #d8d1ff;
+      color: var(--brand-deep);
+    }
+    .btn-primary{
+      background:#fff; color:var(--brand-deep);
+      border:1px solid var(--brand-deep);
+    }
+    .btn-primary:hover, .btn-primary:focus{
+      background:var(--brand-deep); color:#fff; border-color:var(--brand-deep);
+      box-shadow:0 6px 14px rgba(59,19,154,.18);
+    }
+    .btn-success{
+      background: var(--brand-deep); border-color: var(--brand-deep);
+      color:#fff;
+    }
+    .btn-success:hover, .btn-success:focus{
+      background: var(--brand-purple-700); border-color: var(--brand-purple-700);
+      box-shadow: 0 6px 14px rgba(59,19,154,.18);
+      color:#fff;
+    }
+    .btn-outline-secondary{
+      background:#fff; border-color:#d7d2ff; color:var(--brand-ink);
+    }
+    .btn-outline-secondary:hover{
+      background: var(--brand-soft); border-color: var(--brand-accent); color: var(--brand-deep);
+    }
+
+    /* Table styling to match */
+    .table thead.table-light th{
+      background: var(--thead-bg) !important;
+      color: var(--brand-ink);
+      border-bottom-color: #e6e2ff;
+      font-weight: 600;
+    }
+    .table-sm td, .table-sm th { vertical-align: middle; }
+    table.table tbody tr:hover { background: var(--row-hover); }
+    .form-check-input{ border-color:#d9d3ff; }
+    .form-check-input:checked{ background-color: var(--brand-deep); border-color: var(--brand-deep); }
+
+    /* Footer */
+    .card-footer.bg-light{
+      background: #fff !important;
+      border-top: 1px solid #ece9ff;
+    }
+
+    /* Disabled state for grant button */
+    #btnGrant[disabled]{ opacity:.7; cursor:not-allowed; }
+  </style>
+  <meta name="current-role" content="{{ role }}">
+</head>
+<body>
+<div class="container py-4">
+
+  <!-- Header (now styled like Assign Users) -->
+  <div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+      <h3 class="fw-semibold mb-1">
+        Grant structure to <span class="text-primary">{{ role }}</span>
+      </h3>
+      <div class="small" style="opacity:.9">
+        Pick one or more permission sets to grant to this role.<br>
+        (You already assigned users/groups on the previous step.)
+      </div>
+    </div>
+    <a class="btn btn-light btn-sm"
+       href="{{ url_for('permissions.assign_users', role=role, entity='users') }}">
+      <i class="bi bi-arrow-left-short me-1"></i> Back
+    </a>
+  </div>
+
+  <!-- Card -->
+  <form method="post" action="{{ url_for('permissions.grant_structure') }}" class="card shadow-sm mt-3">
+    <input type="hidden" name="role" value="{{ role }}">
+    <div class="card-body">
+
+      <!-- Filter / Tools (sticky for long lists) -->
+      <div class="sticky-topbar">
+        <div class="row g-2 align-items-center">
+          <div class="col-sm-6">
+            <div class="input-group">
+              <span class="input-group-text" style="background: var(--brand-soft); border-color:#e6e2ff; font-weight:500; color:var(--brand-ink);">
+                <i class="bi bi-search"></i>
+              </span>
+              <input id="filterBox" class="form-control" placeholder="Filter permission sets…">
+            </div>
+          </div>
+          <div class="col-sm-6 d-flex justify-content-sm-end align-items-center gap-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="chkAll">
+              <label class="form-check-label" for="chkAll">Select all (visible)</label>
+            </div>
+            <span class="text-muted small">Selected: <strong id="selCount">0</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width:52px;"></th>
+              <th>Permission Set</th>
+              <th>Description</th>
+              <th>Type</th>
+              <th>Obj grants</th>
+              <th>LU name</th>
+            </tr>
+          </thead>
+          <tbody id="roleRows">
+            <!-- JS will inject rows after calling /api/ifs/not_granted_permission_sets -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Footer actions -->
+    <div class="card-footer bg-light d-flex justify-content-end align-items-center gap-2">
+      <a class="btn btn-outline-secondary"
+         href="{{ url_for('permissions.assign_users', role=role, entity='users') }}">
+        Back
+      </a>
+      <button type="submit" class="btn btn-primary" id="btnGrant" disabled>
+        Grant selected
+      </button>
+      <a class="btn btn-success" id="btnFinish"
+         href="{{ url_for('permissions.grant_success') }}?role={{ role }}&entity=users&granted=0">
+        Finish
+      </a>
+    </div>
+  </form>
+</div>
+
+<script>
+  // ---- role resolution (meta -> URL fallback) ----
+  function getParam(name) {
+    const p = new URLSearchParams(window.location.search);
+    return (p.get(name) || '').trim();
+  }
+  const CURRENT_ROLE =
+    (document.querySelector('meta[name="current-role"]')?.content || '').trim() ||
+    getParam('role');
+
+  // DOM handles
+  const filterBox = document.getElementById('filterBox');
+  const tbody     = document.getElementById('roleRows');
+  const chkAll    = document.getElementById('chkAll');
+  const btnGrant  = document.getElementById('btnGrant');
+  const btnFinish  = document.getElementById('btnFinish');
+  const selCount  = document.getElementById('selCount');
+
+  // Utilities
+  const visible = (tr) => tr.style.display !== 'none';
+
+  function queryChecksScope() {
+    return Array.from(tbody.querySelectorAll('.roleChk'));
+  }
+
+  function updateGrantEnabled() {
+    const checks = queryChecksScope();
+    const visChecked = checks.filter(c => c.checked && visible(c.closest('tr'))).length;
+    if (btnGrant) btnGrant.disabled = visChecked === 0;
+    if (selCount) selCount.textContent = visChecked;
+  }
+
+  function attachRowHandlers() {
+    queryChecksScope().forEach(c => {
+      if (!c._wired) {
+        c.addEventListener('change', updateGrantEnabled);
+        c._wired = true;
+      }
+    });
+  }
+
+  function renderLoadingRow(msg) {
+    tbody.innerHTML = `
+      <tr data-loading="1">
+        <td colspan="6" class="text-center text-muted py-4">
+          <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+          ${msg || 'Loading permission sets…'}
+        </td>
+      </tr>`;
+  }
+
+  function renderErrorRow(message) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" class="text-danger small py-3">
+          ${message}
+        </td>
+      </tr>`;
+  }
+
+  function roleRowHTML(item) {
+    const role   = (item.Role || item.ROLE || item.role || '').trim();
+    const desc   = (item.Description || item.DESCRIPTION || item.description || '') || '';
+    const type   = (item.FndRoleType || item.FND_ROLE_TYPE || item.fndRoleType || '') || '';
+    const obj    = (item.Objgrants || item.OBJGRANTS || item.objgrants || '') || '';
+    const lu     = (item.luname || item.LUNAME || item.LuName || '') || '';
+    const keyref = (item.keyref || item.KEYREF || '') || '';
+
+    const dataName = `${role} ${desc}`.toUpperCase();
+    return `
+      <tr data-name="${dataName}">
+        <td style="width:40px">
+          <input type="checkbox" class="form-check-input roleChk" value="${role}">
+        </td>
+        <td class="text-nowrap"><code>${role}</code></td>
+        <td class="text-muted">${desc}</td>
+        <td class="text-muted">${type}</td>
+        <td class="text-muted">${obj}</td>
+        <td class="text-muted">${lu}</td>
+      </tr>`;
+  }
+
+  async function fetchNotGranted(role) {
+    const qs = new URLSearchParams({ role, $skip: '0', $top: '25' }).toString();
+    const url = `/api/ifs/not_granted_permission_sets?${qs}`;
+    const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    const text = await resp.text();
+    let j = null; try { j = text ? JSON.parse(text) : null; } catch {}
+    if (!resp.ok || !j) {
+      throw new Error((j && (j.details || j.error || j.message)) || `HTTP ${resp.status} - ${text.slice(0,300)}`);
+    }
+    const arr = (Array.isArray(j.value) ? j.value : (Array.isArray(j.roles) ? j.roles : [])) || [];
+    return arr;
+  }
+
+  function populateTable(rows) {
+    if (!rows.length) {
+      renderErrorRow('No permission sets were returned to grant.');
+      updateGrantEnabled();
+      return;
+    }
+    tbody.innerHTML = rows.map(roleRowHTML).join('');
+    if (chkAll) chkAll.checked = false;
+    attachRowHandlers();
+    updateGrantEnabled();
+  }
+
+  // ---- Filter ----
+  filterBox && filterBox.addEventListener('input', () => {
+    const q = (filterBox.value || '').trim().toUpperCase();
+    Array.from(tbody.querySelectorAll('tr')).forEach(tr => {
+      const name = tr.getAttribute('data-name') || '';
+      tr.style.display = (!q || name.includes(q)) ? '' : 'none';
+    });
+    updateGrantEnabled();
+  });
+
+  // ---- Select all visible ----
+  chkAll && chkAll.addEventListener('change', () => {
+    Array.from(tbody.querySelectorAll('tr')).forEach(tr => {
+      if (visible(tr)) {
+        const cb = tr.querySelector('.roleChk');
+        if (cb) cb.checked = chkAll.checked;
+      }
+    });
+    updateGrantEnabled();
+  });
+
+  // ---- Submit: grant selected roles ----
+  (function wireGrantSubmit() {
+    const form = document.querySelector('form[action*="grant_structure"]');
+    if (!form) return;
+
+    form.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      if (!CURRENT_ROLE) return alert('Missing role');
+
+      const selected = Array
+        .from(tbody.querySelectorAll('.roleChk:checked'))
+        .filter(cb => visible(cb.closest('tr')))
+        .map(cb => cb.value)
+        .filter(Boolean);
+
+      if (!selected.length) return;
+
+      const rolesStr = selected.map(r => `ROLE=${r}^`).join(';');
+      const payload = { Role: CURRENT_ROLE, RolesToGrant: rolesStr };
+
+      btnGrant.disabled = true;
+      const oldHTML = btnGrant.innerHTML;
+      btnGrant.innerHTML = `
+        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+        Granting…
+      `;
+
+      try {
+        const resp = await fetch('/api/ifs/grant_permission_sets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const txt = await resp.text();
+        let j = null; try { j = txt ? JSON.parse(txt) : null; } catch {}
+        if (!resp.ok || !j || j.ok === false) {
+          const msg = (j && (j.details || j.error)) || `HTTP ${resp.status} - ${txt.slice(0,300)}`;
+          throw new Error(msg);
+        }
+
+        renderLoadingRow('Refreshing…');
+        const rows = await fetchNotGranted(CURRENT_ROLE);
+        populateTable(rows);
+        alert('Granted successfully.');
+      } catch (e) {
+        alert('Grant failed: ' + e.message);
+      } finally {
+        btnGrant.innerHTML = oldHTML;
+        updateGrantEnabled();
+      }
+    });
+  })();
+
+
+  btnFinish && btnFinish.addEventListener('click', function (e) {
+    if (this.dataset.loading === '1') {
+      e.preventDefault();
+      return;
+    }
+    this.dataset.loading = '1';
+    this.classList.add('disabled');
+    this.setAttribute('aria-disabled', 'true');
+    this.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Finishing…';
+  });
+
+  // ---- Initial load ----
+  (async function init() {
+    const already = tbody ? tbody.querySelectorAll('tr').length : 0;
+    if (already > 0) {
+      attachRowHandlers();
+      updateGrantEnabled();
+      return;
+    }
+
+    if (!CURRENT_ROLE) {
+      renderErrorRow('Missing role. Open this page with ?role=YOUR_ROLE.');
+      return;
+    }
+
+    try {
+      renderLoadingRow('Loading permission sets…');
+      const rows = await fetchNotGranted(CURRENT_ROLE);
+      populateTable(rows);
+    } catch (e) {
+      renderErrorRow('Failed to load permission sets: ' + e.message);
+    }
+  })();
+</script>
+</body>
+</html>

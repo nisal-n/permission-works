@@ -1,0 +1,25 @@
+{
+  "backup": {
+    "path": "backup/pw_251215_192500.zip",
+    "roles": [
+      "TEST_01",
+      "TEST_CUSTOM_CRYSTAL"
+    ],
+    "count": 2,
+    "target_env": "DEV",
+    "ok": true,
+    "error": null
+  },
+  "version_id": "pw_251215_192500",
+  "source_env": "DEV",
+  "created_ts": 1765806900.4629064,
+  "default_target_env": "DEV",
+  "migrations": [
+    {
+      "to": "DEV",
+      "mode": "xml",
+      "ts": 1765806975.9164195,
+      "status": "ok"
+    }
+  ]
+}

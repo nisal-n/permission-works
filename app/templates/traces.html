@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Permission Works - Trace Capture</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body{background:#f8f9fa}
+    .header{background:#fff;border-bottom:2px solid #dee2e6;padding:16px 10px;margin-bottom:20px;text-align:center}
+    .header h1{margin:0;font-size:1.8rem;font-weight:700}
+    .header .brand{color:#6a0dad}
+    .controls .btn{min-width:140px;margin:2px}
+    .trace-active-card{background:#fff;border-radius:12px;box-shadow:0 1px 10px rgba(0,0,0,.06);padding:20px 24px;position:relative}
+    .trace-active-copy{padding-top:0}.trace-active-card .badge,.trace-active-card .rec-indicator,.trace-active-card .recording-badge,.trace-active-card [id*="rec" i],.trace-active-card [class*="rec" i]{display:none !important}
+    .idle-card .lead{font-weight:600}
+    :root{--brand-purple:#6a0dad}
+    .btn-outline-primary{--bs-btn-color:var(--brand-purple);--bs-btn-border-color:var(--brand-purple);--bs-btn-hover-bg:var(--brand-purple);--bs-btn-hover-border-color:var(--brand-purple);--bs-btn-active-bg:var(--brand-purple);--bs-btn-active-border-color:var(--brand-purple);--bs-btn-focus-shadow-rgb:106,13,173}
+    .btn-success{--bs-btn-bg:#22A06B;--bs-btn-border-color:#22A06B;--bs-btn-hover-bg:#198754;--bs-btn-hover-border-color:#198754;--bs-btn-focus-shadow-rgb:34,160,107}
+    .btn-danger{--bs-btn-bg:#DC3545;--bs-btn-border-color:#DC3545;--bs-btn-hover-bg:#BB2D3B;--bs-btn-hover-border-color:#BB2D3B;--bs-btn-focus-shadow-rgb:220,53,69}
+    .btn-warning{--bs-btn-color:#212529;--bs-btn-bg:#FFC107;--bs-btn-border-color:#FFC107;--bs-btn-hover-bg:#E0A800;--bs-btn-hover-border-color:#E0A800;--bs-btn-focus-shadow-rgb:255,193,7}
+    .btn.disabled,.btn[aria-disabled="true"],button.btn:disabled{background-color:#adb5bd !important;border-color:#adb5bd !important;color:#fff !important;pointer-events:none;opacity:1 !important}
+    .btn.disabled:hover,.btn[aria-disabled="true"]:hover,button.btn:disabled:hover,.btn.disabled:focus,.btn[aria-disabled="true"]:focus,button.btn:disabled:focus{background-color:#adb5bd !important;border-color:#adb5bd !important;color:#fff !important;box-shadow:none !important}
+    .btn-outline-primary.disabled,.btn-outline-primary[aria-disabled="true"]{background-color:#adb5bd !important;border-color:#adb5bd !important;color:#fff !important}
+    .status-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;font-weight:600;font-size:.95rem;background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe}
+    .status-pill.recording{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
+    .status-pill .dot{width:10px;height:10px;border-radius:50%;background:currentColor;opacity:.85}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Permission Works <span class="brand">OasisPro</span></h1>
+      <p class="text-muted mb-0">IFS Trace Capture Utility</p>
+    </div>
+
+    <div class="d-flex justify-content-center align-items-center gap-3 flex-wrap mb-2">
+      <div id="traceStatePill" class="status-pill {% if is_tracing %}recording{% endif %}">
+        <span class="dot"></span>
+        <span id="traceStateText">{% if is_tracing %}Recording active{% else %}Ready to start{% endif %}</span>
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-center mb-3">
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" role="switch" id="keepTrackingData">
+        <label class="form-check-label fw-semibold" for="keepTrackingData">Keep tracking data</label>
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-center mb-3 flex-wrap controls">
+      <a href="/start_trace" id="btnStart" class="btn btn-success btn-lg {% if is_tracing %}disabled{% endif %}" {% if is_tracing %}aria-disabled="true" tabindex="-1"{% endif %} data-default-base="{{ default_base or '' }}">Start</a>
+      <a href="/stop_trace" id="btnStop" class="btn btn-danger btn-lg {% if not is_tracing %}disabled{% endif %}" {% if not is_tracing %}aria-disabled="true" tabindex="-1"{% endif %}><span class="stop-label">Stop</span></a>
+      <form action="/reset_trace" method="post" class="d-inline">
+        <button type="submit" id="btnReset" class="btn btn-warning btn-lg" {% if not is_tracing %}disabled{% endif %}>Reset &amp; Start New Trace</button>
+      </form>
+    </div>
+
+    {% if is_tracing %}
+      <div class="trace-active-card">
+        <div class="trace-active-copy">
+          <p class="lead mb-1">Recording is running</p>
+          <p class="text-muted mb-0">Go to your default IFS environment and continue the process. Return here and click <strong>Stop</strong> when you are finished.</p>
+        </div>
+      </div>
+    {% else %}
+      <div class="card shadow-sm idle-card">
+        <div class="card-body py-4">
+          <p class="lead mb-1">Ready to trace a process</p>
+          <p class="text-muted mb-0">Click <strong>Start</strong> above, then perform the steps in your default IFS environment. Return here and click <strong>Stop</strong> to proceed with the summary and grants.</p>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if is_tracing %}
+  <script>
+    setInterval(function(){ fetch(location.href,{headers:{"X-Requested-With":"fetch"}}).catch(function(){}); }, 4000);
+  </script>
+  {% endif %}
+
+  <div id="recordingStatus" class="container mt-3" style="display:none;"><div class="alert alert-warning mb-0"></div></div>
+  <script>
+    (function(){
+      const start = document.getElementById('btnStart');
+      const stop = document.getElementById('btnStop');
+      const reset = document.getElementById('btnReset');
+      const statePill = document.getElementById('traceStatePill');
+      const stateText = document.getElementById('traceStateText');
+      const keepTrackingToggle = document.getElementById('keepTrackingData');
+      const statusWrap = document.getElementById('recordingStatus');
+      const statusAlert = statusWrap ? statusWrap.querySelector('.alert') : null;
+      const mode = {{ ('"update"' if update_role else '"create"')|safe }};
+      const role = {{ (update_role or '')|tojson }};
+      let stream = null;
+      let recorder = null;
+      let chunks = [];
+      let startInFlight = false;
+      let stopInFlight = false;
+      let recordingEnabledForRun = false;
+      const trackingPrefKey = 'permissionworks.keepTrackingData';
+
+      function isTrackingEnabled() {
+        return !!(keepTrackingToggle && keepTrackingToggle.checked);
+      }
+
+      function syncToggleState() {
+        if (!keepTrackingToggle) return;
+        const isBusy = !!(recorder && recorder.state !== 'inactive') || startInFlight || stopInFlight || {{ 'true' if is_tracing else 'false' }};
+        keepTrackingToggle.disabled = isBusy;
+      }
+
+      try {
+        const savedPref = window.localStorage.getItem(trackingPrefKey);
+        if (keepTrackingToggle) {
+          keepTrackingToggle.checked = savedPref === '1';
+          keepTrackingToggle.addEventListener('change', function() {
+            window.localStorage.setItem(trackingPrefKey, keepTrackingToggle.checked ? '1' : '0');
+          });
+        }
+      } catch (_) {}
+      syncToggleState();
+
+      function showStatus(msg, kind) {
+        if (!statusWrap || !statusAlert) return;
+        statusAlert.className = 'alert mb-0 alert-' + (kind || 'warning');
+        statusAlert.textContent = msg;
+        statusWrap.style.display = '';
+      }
+
+      function hideStatus() {
+        if (statusWrap) statusWrap.style.display = 'none';
+      }
+
+      function setButtonHtml(el, html) {
+        if (el) el.innerHTML = html;
+      }
+
+      function setUiState(state) {
+        if (!statePill || !stateText) return;
+        if (state === 'starting') {
+          statePill.classList.remove('recording');
+          stateText.textContent = 'Starting screen recording...';
+          setButtonHtml(start, '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Starting...');
+        } else if (state === 'recording') {
+          statePill.classList.add('recording');
+          stateText.textContent = 'Recording active';
+          setButtonHtml(start, 'Recording...');
+        } else if (state === 'saving') {
+          statePill.classList.add('recording');
+          stateText.textContent = 'Stopping trace...';
+          setButtonHtml(stop, '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Stopping...');
+        } else {
+          statePill.classList.remove('recording');
+          stateText.textContent = 'Ready to start';
+          setButtonHtml(start, 'Start');
+          setButtonHtml(stop, '<span class="stop-label">Stop</span>');
+        }
+      }
+
+      function enableStopUi() {
+        syncToggleState();
+        if (start) {
+          start.classList.add('disabled');
+          start.setAttribute('aria-disabled', 'true');
+          start.setAttribute('tabindex', '-1');
+        }
+        if (stop) {
+          stop.classList.remove('disabled');
+          stop.removeAttribute('aria-disabled');
+          stop.removeAttribute('tabindex');
+        }
+        if (reset) reset.removeAttribute('disabled');
+      }
+
+      function resetUiAfterFailure() {
+        startInFlight = false;
+        stopInFlight = false;
+        recordingEnabledForRun = false;
+        setUiState('idle');
+        if (start && !{{ 'true' if is_tracing else 'false' }}) {
+          start.classList.remove('disabled');
+          start.removeAttribute('aria-disabled');
+          start.removeAttribute('tabindex');
+        }
+        syncToggleState();
+      }
+
+      function supportedMimeType() {
+        const options = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+        for (const item of options) {
+          if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(item)) {
+            return item;
+          }
+        }
+        return '';
+      }
+
+      async function postStartTrace() {
+        const res = await fetch('/api/start_trace_session', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'X-Requested-With': 'fetch' }
+        });
+        if (!res.ok) {
+          throw new Error('Trace session could not be started.');
+        }
+      }
+
+      async function uploadRecording(blob) {
+        const fd = new FormData();
+        fd.append('video', blob, 'trace-recording.webm');
+        fd.append('mode', mode);
+        fd.append('role', role);
+        const res = await fetch('/api/save_screen_recording', {
+          method: 'POST',
+          body: fd,
+          credentials: 'same-origin'
+        });
+        if (!res.ok) {
+          let detail = '';
+          try { detail = JSON.stringify(await res.json()); } catch (_) {}
+          throw new Error('Recording upload failed' + (detail ? ': ' + detail : '.'));
+        }
+      }
+
+      async function startCapture() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+          throw new Error('This browser does not support screen recording.');
+        }
+        const captureOptions = {
+          video: {
+            displaySurface: 'monitor',
+            cursor: 'always'
+          },
+          audio: false
+        };
+        stream = await navigator.mediaDevices.getDisplayMedia(captureOptions);
+        chunks = [];
+        const mimeType = supportedMimeType();
+        recorder = mimeType ? new MediaRecorder(stream, { mimeType: mimeType }) : new MediaRecorder(stream);
+        recorder.ondataavailable = function(ev) {
+          if (ev.data && ev.data.size > 0) chunks.push(ev.data);
+        };
+        recorder.onerror = function() {};
+        const tracks = stream.getTracks ? stream.getTracks() : [];
+        tracks.forEach(function(track) {
+          track.addEventListener('ended', function() {
+            if (recorder && recorder.state !== 'inactive') {
+              try { recorder.stop(); } catch (_) {}
+            }
+          });
+        });
+        recorder.start(1000);
+        await new Promise(function(resolve) {
+          setTimeout(resolve, 150);
+        });
+      }
+
+      async function stopCaptureAndUpload() {
+        return new Promise(function(resolve, reject) {
+          if (!recorder || recorder.state === 'inactive') {
+            resolve(false);
+            return;
+          }
+          let done = false;
+          function cleanup() {
+            try {
+              if (stream && stream.getTracks) {
+                stream.getTracks().forEach(function(track){ track.stop(); });
+              }
+            } catch (_) {}
+            stream = null;
+            recorder = null;
+          }
+          async function finishUpload() {
+            if (done) return;
+            done = true;
+            cleanup();
+            try {
+              const blob = chunks.length ? new Blob(chunks, { type: chunks[0].type || 'video/webm' }) : null;
+              chunks = [];
+              if (!blob || blob.size === 0) {
+                throw new Error('No recording data was captured.');
+              }
+              await uploadRecording(blob);
+              resolve(true);
+            } catch (err) {
+              reject(err);
+            }
+          }
+          recorder.addEventListener('stop', function(){ window.setTimeout(finishUpload, 400); }, { once: true });
+          recorder.addEventListener('error', function(ev){ reject((ev && ev.error) || new Error('Screen recorder failed.')); }, { once: true });
+          try { recorder.requestData(); } catch (_) {}
+          try { recorder.stop(); } catch (err) { reject(err); }
+          window.setTimeout(function(){ if (!done) finishUpload(); }, 5000);
+        });
+      }
+
+      if (start) {
+        start.addEventListener('click', async function(e) {
+          if (start.classList.contains('disabled') || start.getAttribute('aria-disabled') === 'true' || startInFlight) {
+            e.preventDefault();
+            return;
+          }
+          if (!isTrackingEnabled()) {
+            recordingEnabledForRun = false;
+            const baseUrl = (start.getAttribute('data-default-base') || '').trim();
+            if (baseUrl) {
+              try { window.open(baseUrl, '_blank', 'noopener'); } catch (_) {}
+            }
+            return;
+          }
+          e.preventDefault();
+          hideStatus();
+          startInFlight = true;
+          recordingEnabledForRun = true;
+          syncToggleState();
+          setUiState('starting');
+          try {
+            await startCapture();
+            await postStartTrace();
+            enableStopUi();
+            setUiState('recording');
+            const baseUrl = (start.getAttribute('data-default-base') || '').trim();
+            if (baseUrl) {
+              try { window.open(baseUrl, '_blank', 'noopener'); } catch (_) {}
+            }
+          } catch (err) {
+            try {
+              if (stream && stream.getTracks) stream.getTracks().forEach(function(track){ track.stop(); });
+            } catch (_) {}
+            stream = null;
+            recorder = null;
+            chunks = [];
+            showStatus((err && err.message) ? err.message : 'Screen recording could not be started.', 'warning');
+            resetUiAfterFailure();
+            return;
+          }
+          startInFlight = false;
+          syncToggleState();
+        }, { passive: false });
+      }
+
+      if (stop) {
+        stop.addEventListener('click', async function(e) {
+          if (stop.classList.contains('disabled') || stop.getAttribute('aria-disabled') === 'true' || stopInFlight) {
+            e.preventDefault();
+            return;
+          }
+          e.preventDefault();
+          e.stopPropagation();
+          if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+          hideStatus();
+          stopInFlight = true;
+          syncToggleState();
+          setUiState('saving');
+          if (start) {
+            start.classList.add('disabled');
+            start.setAttribute('aria-disabled', 'true');
+            start.setAttribute('tabindex', '-1');
+          }
+          if (stop) {
+            stop.classList.add('disabled');
+            stop.setAttribute('aria-disabled', 'true');
+            stop.setAttribute('tabindex', '-1');
+          }
+          if (reset) reset.setAttribute('disabled', 'disabled');
+          if (!recordingEnabledForRun) {
+            window.setTimeout(function(){
+              window.location.href = stop.getAttribute('href');
+            }, 50);
+            return;
+          }
+          try {
+            await stopCaptureAndUpload();
+          } catch (err) {
+            stopInFlight = false;
+            syncToggleState();
+            if (stop) {
+              stop.classList.remove('disabled');
+              stop.removeAttribute('aria-disabled');
+              stop.removeAttribute('tabindex');
+            }
+            setUiState('recording');
+            showStatus((err && err.message) ? err.message : 'Recording could not be saved.', 'danger');
+            return;
+          }
+          recordingEnabledForRun = false;
+          syncToggleState();
+          window.location.href = stop.getAttribute('href');
+        }, { passive: false, capture: true });
+      }
+    })();
+  </script>
+</body>
+</html>

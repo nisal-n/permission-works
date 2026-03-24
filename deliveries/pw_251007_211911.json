@@ -1,0 +1,24 @@
+{
+  "backup": {
+    "path": "backup/pw_251007_211911.zip",
+    "roles": [
+      "OASIS_PRO_PS"
+    ],
+    "count": 1,
+    "target_env": "DEV",
+    "ok": true,
+    "error": null
+  },
+  "version_id": "pw_251007_211911",
+  "source_env": "DEV",
+  "created_ts": 1759852151.151118,
+  "default_target_env": "DEV",
+  "migrations": [
+    {
+      "to": "DEV",
+      "mode": "xml",
+      "ts": 1759852187.6508443,
+      "status": "ok"
+    }
+  ]
+}

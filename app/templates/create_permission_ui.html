@@ -1,0 +1,3716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Create / Update Permission Set</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .hide{display:none}
+    .cmd-row{display:flex;align-items:center;gap:.5rem;padding:.25rem .35rem;border-radius:.35rem}
+    .cmd-row:hover{background:#f8f9fa}
+    .cmd-name{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
+    .sticky-top-shadow{position:sticky;top:0;background:#fff;z-index:2;box-shadow:0 1px 0 rgba(0,0,0,.05)}
+    .collapse-cell{background:#fff;border:1px solid #e9ecef;border-top:none}
+    .proj-title { display:flex; align-items:center; gap:.5rem; }
+    .badge-soft { background:#f8f9fa; border:1px solid #e9ecef; }
+    .btn-outline-success, .btn-outline-primary { opacity:.75 }
+    .btn-success, .btn-primary{ opacity:1 }
+    .btn:disabled{ opacity:.45; cursor:not-allowed }
+
+    /* UI patches */
+    .tab-toolbar{display:flex;gap:.5rem;align-items:center;margin:.5rem 0}
+    .tab-toolbar .form-control{max-width:320px}
+    .table thead th:first-child{width:44px}
+    .nav-tabs .nav-link{border-radius:.375rem .375rem 0 0}
+    .nav-tabs .nav-link.active{font-weight:600}
+    .saving .spinner-border{ --bs-spinner-width: .9rem; --bs-spinner-height: .9rem }
+
+    /* ...existing styles... */
+    .loading-wrap{
+      display:flex; align-items:center; justify-content:center;
+      min-height:140px; color:#6c757d;
+    }
+    .loading-wrap .spinner-border{
+      --bs-spinner-width:1rem; --bs-spinner-height:1rem;
+      margin-right:.5rem;
+    }
+    /* Make Bootstrap collapse work for table rows */
+    tr.collapse { display: none; }
+    tr.collapse.show { display: table-row; }
+
+  </style>
+  <style>
+    /* Child panel look + indent */
+    .actions-panel{
+      background:#f6f7f9;
+      margin-left: 24px;              /* indent so it's visually a child */
+      border:1px solid #e6e8ec;
+      border-radius: 8px;
+    }
+    .actions-header{
+      background:#eef2f7;
+      border-bottom:1px solid #e6e8ec;
+      padding:.5rem .75rem;
+      border-top-left-radius:8px;
+      border-top-right-radius:8px;
+    }
+    .actions-list .list-group-item{
+      border:0;
+      border-bottom:1px solid #eceff3;
+    }
+    .actions-list .list-group-item:last-child{
+      border-bottom:0;
+    }
+    .actions-list .form-check{
+      display:flex; align-items:center; gap:.5rem; margin:0;
+    }
+    .actions-list .form-check-input{
+      cursor:pointer;
+    }
+
+    /* Make Bootstrap collapse work for <tr> rows (keep these if not present) */
+    tr.collapse { display: none; }
+    tr.collapse.show { display: table-row; }
+  </style>
+
+
+  <meta name="ifs-projection-base" content="/main/ifsapplications/projection/v1/PermissionSetHandling.svc">
+  <script src="/assets/app.bundle.js"></script>
+
+
+  <style id="smart-purple-theme">
+    :root{
+      --sp-purple-50:#f7f2ff;
+      --sp-purple-100:#eee7ff;
+      --sp-purple-200:#dccfff;
+      --sp-purple-300:#c1a7ff;
+      --sp-purple-400:#a27bff;
+      --sp-purple-500:#8a5cff;
+      --sp-purple-600:#6f42c1; /* base accent */
+      --sp-purple-700:#5a34a0;
+      --sp-purple-800:#45297c;
+      --sp-purple-900:#2e1b53;
+
+      --sp-bg: #ffffff;
+      --sp-bg-soft: #faf9ff;
+      --sp-card: #ffffff;
+      --sp-border: #e8e6f3;
+      --sp-text: #212529;
+      --sp-muted: #6c757d;
+      --sp-link: var(--sp-purple-700);
+      --sp-primary: var(--sp-purple-600);
+    }
+
+    /* Dark purple mode */
+    .theme-purple{
+      --sp-bg: #0f0c1a;
+      --sp-bg-soft: #16112a;
+      --sp-card: #1b1433;
+      --sp-border: #2a214a;
+      --sp-text: #f2effd;
+      --sp-muted: #bfb8de;
+      --sp-link: #bca6ff;
+      --sp-primary: #b389ff;
+    }
+
+    body{
+      background: radial-gradient(1200px 600px at -10% -10%, var(--sp-purple-50), transparent 50%),
+                  radial-gradient(1000px 500px at 110% -20%, var(--sp-purple-100), transparent 50%),
+                  var(--sp-bg) !important;
+      color: var(--sp-text);
+    }
+
+    .container .card,
+    .card{
+      background: var(--sp-card);
+      border: 1px solid var(--sp-border);
+      border-radius: 14px;
+      box-shadow: 0 6px 24px rgba(18, 10, 35, .06);
+    }
+
+    .card-header{
+      background: linear-gradient(180deg, var(--sp-purple-600), var(--sp-purple-700)) !important;
+      color: #fff !important;
+      border-bottom: 0;
+    }
+
+    .table{
+      --bs-table-bg: transparent;
+      --bs-table-striped-bg: color-mix(in oklab, var(--sp-card) 90%, var(--sp-purple-200) 10%);
+      --bs-table-hover-bg: color-mix(in oklab, var(--sp-card) 85%, var(--sp-purple-200) 15%);
+      color: var(--sp-text);
+    }
+    .table thead{
+      background: color-mix(in oklab, var(--sp-card) 75%, var(--sp-purple-200) 25%);
+    }
+    .table thead th{ border:0; }
+    .table tbody tr{ transition: background .15s ease, transform .06s ease }
+    .table tbody tr:hover{ transform: translateY(-1px); }
+
+    .nav-tabs{
+      border-color: var(--sp-border);
+    }
+    .nav-tabs .nav-link{
+      color: var(--sp-text);
+      background: color-mix(in oklab, var(--sp-card) 94%, var(--sp-purple-200) 6%);
+      border: 1px solid var(--sp-border);
+      border-bottom: none;
+      border-radius: 10px 10px 0 0;
+      margin-right: .25rem;
+    }
+    .nav-tabs .nav-link.active{
+      background: var(--sp-card);
+      font-weight: 700;
+      color: var(--sp-primary);
+      box-shadow: 0 -2px 0 var(--sp-primary) inset;
+    }
+
+    .form-control, .form-select, .input-group-text{
+      background: color-mix(in oklab, var(--sp-card) 92%, var(--sp-purple-200) 8%);
+      color: var(--sp-text);
+      border-color: var(--sp-border);
+    }
+    .form-control::placeholder{ color: color-mix(in oklab, var(--sp-muted) 80%, #fff 20%); }
+
+    .badge-soft{ background: color-mix(in oklab, var(--sp-purple-200) 30%, #fff); border: 1px solid var(--sp-border); }
+    .btn-primary, .btn-success, .btn-outline-primary, .btn-outline-success{
+      border-radius: 10px;
+    }
+    .btn-primary{ background: var(--sp-primary); border-color: var(--sp-primary); }
+    .btn-primary:hover{ filter: brightness(1.05); }
+    .btn-outline-primary{ color: var(--sp-primary); border-color: var(--sp-primary); }
+    .btn-outline-primary:hover{ background: var(--sp-primary); color: #fff; }
+    .btn-success{ background: #22c55e; border-color: #22c55e; }
+    .btn-outline-success{ color: #22c55e; border-color: #22c55e; }
+    .btn-outline-success:hover{ background:#22c55e; color:#0f0c1a }
+
+    /* Sticky header bar for actions */
+    .sticky-top-shadow{
+      top: 0;
+      background: var(--sp-card);
+      border-bottom: 1px solid var(--sp-border);
+      box-shadow: 0 6px 16px rgba(18, 10, 35, .08);
+    }
+
+    .proj-title .fw-semibold{ color: var(--sp-text); }
+    .collapse-cell{ background: var(--sp-card); border-color: var(--sp-border); }
+
+    .loading-wrap{
+      display:flex; align-items:center; justify-content:center;
+      min-height: 160px; color: var(--sp-muted);
+    }
+    .loading-wrap .spinner-border{ width:1.25rem; height:1.25rem; }
+
+    /* Inputs + small chips */
+    .badge{ border-radius: 999px; }
+    .alert{ border-radius: 12px; }
+
+    /* Floating theme switcher */
+    #themeSwitcher{
+      position: fixed; right: 18px; bottom: 18px; z-index: 1040;
+      border-radius: 999px; padding: .6rem .9rem;
+      background: var(--sp-card); color: var(--sp-text);
+      border: 1px solid var(--sp-border);
+      box-shadow: 0 6px 18px rgba(18, 10, 35, .18);
+    }
+    #themeSwitcher .dot{
+      width:10px; height:10px; border-radius:50%;
+      background: var(--sp-primary); display:inline-block; margin-right:.5rem;
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--sp-primary) 30%, transparent);
+    }
+  </style>
+
+
+<style id="smart-purple-tweaks">
+  /* Darker overall purple vibe */
+  .theme-purple{
+    --sp-bg: #0a0714;
+    --sp-bg-soft: #120d27;
+    --sp-card: #140f2a;
+    --sp-border: #2b2150;
+    --sp-text: #efeaff;
+    --sp-muted: #bfb3ef;
+    --sp-link: #ceb6ff;
+    --sp-primary: #b088ff;
+  }
+  .card-header{
+    background: linear-gradient(180deg, #5a2ea6, #3c1b79) !important;
+  }
+
+  /* Make 'Grant users' pop with white treatment when active .btn-primary */
+  #btnGrantUsers.btn-primary{
+    background:#ffffff !important;
+    border-color:#ffffff !important;
+    color: var(--sp-primary) !important;
+    box-shadow: 0 6px 18px rgba(176,136,255,.35);
+    font-weight: 700;
+  }
+  #btnGrantUsers.disabled,
+  #btnGrantUsers[aria-disabled="true"]{
+    opacity:.6;
+  }
+
+  /* Long Save buttons */
+  .tab-toolbar .btn[data-save="1"],
+  [data-save="1"].btn{
+    padding:.55rem 1.25rem;
+    min-width: 120px;
+    border-radius: 12px;
+    font-weight: 700;
+  }
+
+  /* Improve generic primary/secondary contrast on purple */
+  .btn-primary{
+    background: var(--sp-primary);
+    border-color: var(--sp-primary);
+    color:#170f2b;
+    font-weight: 700;
+  }
+  .btn-primary:hover{ filter: brightness(1.06); }
+  .btn-outline-primary{
+    color: var(--sp-primary);
+    border-color: var(--sp-primary);
+  }
+  .btn-outline-primary:hover{
+    background: var(--sp-primary);
+    color:#170f2b;
+  }
+
+  /* Replace 'Delete' text with icon-only without changing logic */
+  button.btn-outline-danger[data-action="delete-row"]{
+    position: relative;
+    font-size: 0; /* hide original text but keep button sizing */
+    width: 38px; height: 32px;
+    display: inline-flex; align-items:center; justify-content:center;
+    border-radius:10px;
+  }
+  button.btn-outline-danger[data-action="delete-row"]::after{
+    content: "🗑";
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  /* Commands & grants -> 'Grants' only, better look */
+  .collapse-btn{
+    border-radius: 10px;
+    font-weight: 700;
+  }
+  .collapse-btn::after{
+    content: none; /* ensure no caret from other libs */
+  }
+  /* Swap label via CSS to keep logic untouched */
+  .collapse-btn{
+    font-size: 0;
+  }
+  .collapse-btn::before{
+    content: "Grants";
+    font-size: .9rem;
+  }
+
+  /* Hide the "0 selected" badge labels */
+  .badge.bg-light.text-dark.border[data-proj]{ display:none !important; }
+
+  /* Slightly larger 'Grant all' and 'Grant users' buttons */
+  #btnGrantAll, #btnGrantUsers{
+    padding:.55rem 1.1rem;
+    border-radius: 12px;
+  }
+
+  /* Headings stronger contrast */
+  .card-header h5{ letter-spacing:.2px; }
+</style>
+
+<link id="bi-cdn" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+<style id="smart-purple-tweaks-v3">
+  /* Grant all to match Grant users white style when primary/success */
+  #btnGrantAll.btn-success{
+    background:#ffffff !important;
+    border-color:#ffffff !important;
+    color: var(--sp-primary) !important;
+    box-shadow: 0 6px 18px rgba(176,136,255,.35);
+    font-weight: 700;
+  }
+
+  /* Save button: stronger style with white text */
+  .tab-toolbar [data-save="1"].btn,
+  [data-save="1"].btn{
+    background: linear-gradient(180deg, var(--sp-primary), color-mix(in oklab, var(--sp-primary) 80%, #3c1b79 20%));
+    color: #fff !important;
+    border: 0;
+    border-radius: 999px;
+    padding: .6rem 1.4rem;
+    font-weight: 800;
+    letter-spacing: .2px;
+  }
+  [data-save="1"].btn:hover{ filter: brightness(1.04); }
+
+  /* Icon-only buttons using Bootstrap Icons */
+  button.btn-outline-danger[data-action="delete-row"]{
+    font-size: 0;
+    width: 38px; height: 32px;
+    display: inline-flex; align-items:center; justify-content:center;
+    border-radius: 10px;
+    padding: 0;
+  }
+  button.btn-outline-danger[data-action="delete-row"]::after{
+    content: "\f5de"; /* bi-trash3 */
+    font-family: "bootstrap-icons";
+    font-size: 18px; line-height: 1;
+  }
+
+  /* Added edit button styling (inserted via JS) */
+  .btn-outline-secondary[data-ui="edit-projection"]{
+    width: 38px; height: 32px; padding: 0;
+    display: inline-flex; align-items:center; justify-content:center;
+    border-radius: 10px;
+  }
+  .btn-outline-secondary[data-ui="edit-projection"]::before{
+    content: "\f4ca"; /* bi-pencil-square */
+    font-family: "bootstrap-icons";
+    font-size: 18px; line-height: 1;
+  }
+
+  /* Make the "Grants" button look smarter */
+  .collapse-btn{
+    background: var(--sp-card);
+    border-color: var(--sp-border);
+    box-shadow: 0 2px 0 color-mix(in oklab, var(--sp-primary) 25%, transparent) inset;
+  }
+  .collapse-btn:hover{
+    border-color: var(--sp-primary);
+    color: var(--sp-primary);
+  }
+</style>
+
+
+<style id="smart-purple-tweaks-v4">
+  /* Use Bootstrap-like variants (less bold, consistent sizes) */
+  .btn{ font-weight: 600; }
+
+  /* Normalize primary color to purple and make success look identical to primary
+     so both "Grant users" and "Grant all" match without changing classes */
+  .btn-primary,
+  #btnGrantAll.btn-success,
+  #btnGrantUsers.btn-primary{
+    background-color: #6f42c1 !important; /* Bootstrap purple */
+    border-color: #6f42c1 !important;
+    color: #fff !important;
+  }
+  .btn-primary:hover,
+  #btnGrantAll.btn-success:hover,
+  #btnGrantUsers.btn-primary:hover{
+    background-color: #5a34a0 !important;
+    border-color: #5a34a0 !important;
+  }
+
+  /* Outline buttons to match primary outline */
+  .btn-outline-primary,
+  #btnGrantAll.btn-outline-success{
+    color: #6f42c1 !important;
+    border-color: #6f42c1 !important;
+    background: transparent !important;
+  }
+  .btn-outline-primary:hover,
+  #btnGrantAll.btn-outline-success:hover{
+    color: #fff !important;
+    background-color: #6f42c1 !important;
+    border-color: #6f42c1 !important;
+  }
+
+  /* Disabled & aria-disabled normalization */
+  .btn.disabled, .btn:disabled,
+  .btn[aria-disabled="true"]{
+    opacity: .55 !important;
+    box-shadow: none !important;
+    cursor: not-allowed !important;
+  }
+
+  /* Focus ring (Bootstrap-like) */
+  .btn:focus, .btn:focus-visible{
+    outline: 0;
+    box-shadow: 0 0 0 .25rem rgba(111,66,193,.25) !important;
+  }
+
+  /* Save buttons: standard primary look, white text */
+  [data-save="1"].btn{
+    background-color: #6f42c1 !important;
+    border-color: #6f42c1 !important;
+    color: #fff !important;
+    border-radius: .5rem;
+    padding: .5rem 1.25rem;
+    font-weight: 600;
+  }
+  [data-save="1"].btn:hover{
+    background-color: #5a34a0 !important;
+    border-color: #5a34a0 !important;
+  }
+</style>
+
+
+<style id="smart-purple-tweaks-v5">
+  /* Back to default Bootstrap-like weight */
+  .btn{ font-weight: 500; }
+
+  /* Grant buttons: white background, purple text/border, normal radius */
+  #btnGrantUsers,
+  #btnGrantAll{
+    border-radius: .375rem !important; /* Bootstrap default */
+    font-weight: 500 !important;
+  }
+
+  /* When enabled as primary/success -> white background + purple text */
+  #btnGrantUsers.btn-primary,
+  #btnGrantAll.btn-success{
+    background-color: #fff !important;
+    border-color: #6f42c1 !important;
+    color: #6f42c1 !important;
+  }
+  #btnGrantUsers.btn-primary:hover,
+  #btnGrantAll.btn-success:hover{
+    border-color: #5a34a0 !important;
+    color: #5a34a0 !important;
+  }
+
+  /* Outline states should look the same (white) */
+  #btnGrantUsers.btn-outline-primary,
+  #btnGrantAll.btn-outline-success{
+    background-color: #fff !important;
+    border-color: #6f42c1 !important;
+    color: #6f42c1 !important;
+  }
+  #btnGrantUsers.btn-outline-primary:hover,
+  #btnGrantAll.btn-outline-success:hover{
+    background-color: #fff !important;
+    border-color: #5a34a0 !important;
+    color: #5a34a0 !important;
+  }
+
+  /* Disabled/aria-disabled — keep white background and visible spinner/icon */
+  #btnGrantUsers.disabled, #btnGrantUsers:disabled, #btnGrantUsers[aria-disabled="true"],
+  #btnGrantAll.disabled,   #btnGrantAll:disabled,   #btnGrantAll[aria-disabled="true"]{
+    background-color: #fff !important;
+    color: #6f42c1 !important;
+    border-color: #b8a6e6 !important;
+    opacity: .65 !important;
+  }
+  #btnGrantUsers .spinner-border, #btnGrantAll .spinner-border{
+    color: #6f42c1; border-color: #6f42c1;
+  }
+
+  /* Save buttons: standard, not pill */
+  [data-save="1"].btn{
+    border-radius: .375rem !important;
+    font-weight: 500 !important;
+  }
+</style>
+
+
+<style id="smart-purple-tweaks-v6">
+  /* When Grant buttons hover turns background purple, force white text */
+  #btnGrantUsers.btn-primary:hover,
+  #btnGrantAll.btn-success:hover,
+  #btnGrantUsers.btn-outline-primary:hover,
+  #btnGrantAll.btn-outline-success:hover,
+  #btnGrantUsers.btn-primary:active,
+  #btnGrantAll.btn-success:active,
+  #btnGrantUsers.btn-outline-primary:active,
+  #btnGrantAll.btn-outline-success:active,
+  #btnGrantUsers.btn-primary:focus,
+  #btnGrantAll.btn-success:focus,
+  #btnGrantUsers.btn-outline-primary:focus,
+  #btnGrantAll.btn-outline-success:focus{
+    background-color: #6f42c1 !important;
+    border-color: #6f42c1 !important;
+    color: #fff !important;
+  }
+</style>
+
+
+<style id="smart-purple-tweaks-v7">
+  /* Make Grant buttons look like Bootstrap's btn-light (normal weight, rectangular) */
+  #btnGrantUsers, #btnGrantAll {
+    background-color: #f8f9fa !important;
+    color: #212529 !important;
+    border: 1px solid #ced4da !important;
+    border-radius: .375rem !important;
+    font-weight: 400 !important;
+    box-shadow: none !important;
+    transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+  }
+  #btnGrantUsers:hover, #btnGrantAll:hover {
+    background-color: #6f42c1 !important;
+    border-color: #6f42c1 !important;
+    color: #fff !important;
+  }
+  #btnGrantUsers:disabled, #btnGrantUsers.disabled, #btnGrantAll:disabled, #btnGrantAll.disabled {
+    background-color: #f8f9fa !important;
+    color: #6c757d !important;
+    border-color: #dee2e6 !important;
+    opacity: 0.65 !important;
+  }
+</style>
+<style id="edit-save-icons">
+  /* Pencil already defined elsewhere. When in save mode, show a check icon */
+  .btn-outline-secondary[data-ui="edit-projection"][data-mode="save"]::before{
+    content: "\f26e"; /* bootstrap-icons: check2 */
+    font-family: "bootstrap-icons";
+    font-size: 18px; line-height: 1;
+  }
+</style>
+
+</head>
+<body class="bg-light">
+<div class="container my-4">
+  <div class="d-flex align-items-center mb-3">
+    <h2 class="mb-0">Permission Set</h2>
+  </div>
+
+  <form id="createForm" class="card shadow-sm" method="post" action="{{ url_for('permissions.create_permission_set') }}">
+    <div class="card-header bg-secondary text-white">
+      <div class="row g-3 align-items-end">
+        {% if is_update %}
+          <div class="col-md-4">
+            <label class="form-label mb-1">Permission Set</label>
+            <input type="hidden" name="mode" value="update" id="mode_hidden_update">
+            <select class="form-select" id="existing_role_display" disabled>
+              <option selected>{{ update_role }}</option>
+            </select>
+            <input type="hidden" name="existing_role" id="existing_role" value="{{ update_role }}">
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label mb-1">Role type</label>
+            <select class="form-select" name="role_type" id="role_type" required>
+              <option value="EndUserRole" selected>End User Role</option>
+              <option value="FunctionalRole">Functional Role</option>
+            </select>
+          </div>
+
+        <div class="col-md-4 ms-md-auto d-flex justify-content-end gap-2">
+          {% if lock %}
+            <!-- Coming from Create flow: show granting controls -->
+            <button type="button" class="btn btn-success" id="btnGrantAll">Grant all</button>
+            <a class="btn btn-outline-primary disabled" id="btnGrantUsers" aria-disabled="true">Grant users</a>
+          {% else %}
+            <!-- Normal Update flow -->
+            <button type="submit" class="btn btn-success" id="btnProceed">Proceed (Update)</button>
+          {% endif %}
+        </div>
+
+
+        {% else %}
+          <div class="col-md-4">
+            <label class="form-label mb-1">Permission Set</label>
+            <div class="d-flex gap-3">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="mode" id="modeCreate" value="create" checked>
+                <label class="form-check-label" for="modeCreate">Create new</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="mode" id="modeUpdate" value="update">
+                <label class="form-check-label" for="modeUpdate">Update existing</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4" id="createWrap">
+            <label class="form-label mb-1">New Permission Set Name</label>
+            <input type="text" class="form-control" name="role_name" id="role_name" placeholder="Enter new Permission Set (Role)">
+          </div>
+
+          <div class="col-md-4 hide" id="updateWrap">
+            <label class="form-label mb-1">Select existing Permission Set (Role)</label>
+            <select class="form-select" name="existing_role" id="existing_role">
+              <option value="">-- choose role --</option>
+              {% for r in roles %}
+                <option value="{{ r.role }}">{{ r.role }}{% if r.description %} — {{ r.description }}{% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label mb-1">Role type</label>
+            <select class="form-select" name="role_type" id="role_type" required>
+              <option value="EndUserRole" selected>End User Role</option>
+              <option value="FunctionalRole">Functional Role</option>
+            </select>
+          </div>
+
+          <div class="col-md-4 ms-md-auto d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-primary" id="btnCreateOnly">Create Permission Set</button>
+            <button type="button" class="btn btn-success" id="btnGrantAll" disabled>Grant all</button>
+            <a class="btn btn-outline-primary disabled" id="btnGrantUsers">Grant users</a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <input type="hidden" name="command_grants_json" id="command_grants_json" value="{}">
+    <input type="hidden" name="deleted_projections_json" id="deleted_projections_json" value="[]">
+
+    <div id="flashArea" class="container mt-2"></div>
+
+    {% if not is_update %}
+    <div id="summaryWrap" class="position-relative">
+      <div id="summaryLock"
+           class="position-absolute top-0 start-0 w-100 h-100 bg-light bg-opacity-75 d-flex align-items-center justify-content-center"
+           style="backdrop-filter: blur(1px); z-index: 5;">
+        <div class="text-muted small">Create the permission set first to enable this section…</div>
+      </div>
+    {% endif %}
+
+    <div class="card shadow-sm">
+      <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">AI Classified Projections</h5>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-striped table-hover mb-0 align-middle">
+            <thead class="table-light">
+              <tr>
+                <th style="width:35%">Projection</th>
+                <th>Access</th>
+                <th style="width:280px">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for row in rows %}
+              {% set is_proj = row.qr_projection is not defined %}
+              <tr>
+                <td>
+                  <div class="proj-title">
+                    <span class="fw-semibold">{{ row.projection }}</span>
+                    {% if row.qr_projection %}
+                      <span class="badge rounded-pill text-dark badge-soft">Quick report</span>
+                    {% endif %}
+                  </div>
+                </td>
+
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                  <select class="form-select form-select-sm access-select"
+                          data-projection="{{ row.projection }}"
+                          {% if is_update and not lock %}disabled{% endif %}
+                          style="width:auto; min-width: 160px;">
+                      {% set acc = (row.access or 'ReadOnly')|string %}
+                      <option value="ReadOnly"   {{ 'selected' if acc|lower == 'readonly' else '' }}>ReadOnly</option>
+                      <option value="FullAccess" {{ 'selected' if acc|lower in ['full', 'fullaccess'] else '' }}>FullAccess</option>
+                    </select>
+                    <span class="text-muted small d-none" data-access-frozen="{{ row.projection }}">(locked after grant)</span>
+                    <input type="hidden" name="access_orig_{{ loop.index }}" value="{{ acc }}">
+                  </div>
+                </td>
+
+                <td>
+                  {% if is_proj %}
+                  <div class="d-flex gap-2 align-items-center">
+                    <button class="btn btn-sm btn-outline-secondary collapse-btn"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#pnl_{{ loop.index }}"
+                            data-projection="{{ row.projection }}"
+                            disabled
+                            title="Create and grant all to enable this">
+                      Commands &amp; grants
+                    </button>
+
+                    <button class="btn btn-sm btn-outline-danger" type="button"
+                            data-action="delete-row" data-projection="{{ row.projection }}">
+                      Delete
+                    </button>
+
+                    <span class="badge bg-light text-dark border" data-proj="{{ row.projection }}">0 selected</span>
+                  </div>
+                  {% else %}
+                    <span class="text-muted">Full access</span>
+                  {% endif %}
+                </td>
+              </tr>
+
+              {% if is_proj %}
+              <tr class="collapse" id="pnl_{{ loop.index }}">
+                <td colspan="3" class="collapse-cell">
+                  <ul class="nav nav-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link active"
+                              id="tab-eag-{{ loop.index }}"
+                              data-bs-toggle="tab"
+                              data-bs-target="#pane-eag-{{ loop.index }}"
+                              type="button" role="tab">
+                        Entity Action Grants
+                      </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link"
+                              id="tab-pag-{{ loop.index }}"
+                              data-bs-toggle="tab"
+                              data-bs-target="#pane-pag-{{ loop.index }}"
+                              type="button" role="tab">
+                        Projection Action Grants
+                      </button>
+                    </li>
+                  </ul>
+
+                  <div class="tab-content p-3 border border-top-0">
+                    <!-- EAG is now default active -->
+                    <div class="tab-pane fade show active" id="pane-eag-{{ loop.index }}" role="tabpanel"></div>
+                    <div class="tab-pane fade" id="pane-pag-{{ loop.index }}" role="tabpanel"></div>
+                  </div>
+
+                </td>
+              </tr>
+              {% endif %}
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    {% if not is_update %}
+    </div> <!-- /summaryWrap -->
+    {% endif %}
+  </form>
+</div>
+
+<script>
+  // Authoritative Commands grants cache (by role+projection)
+  const COMMANDS_CACHE = new Map();
+  const COMMAND_ACTIONS_PREVIEW_CACHE = new Map();
+  const actionCacheKey = (role, proj, cmd) => `${role}::${proj}::${cmd}`;
+  const ck = (role, proj) => `${role}::${proj}`;
+  const setCommandsCache = (role, proj, data) => COMMANDS_CACHE.set(ck(role, proj), data);
+  const getCommandsCache = (role, proj) => COMMANDS_CACHE.get(ck(role, proj));
+  const invalidateCommandsCache = (role, proj) => COMMANDS_CACHE.delete(ck(role, proj));
+  // IFS projection base for the assistant flow
+  window.ifsProjectionBase = "/main/ifsapplications/projection/v1/PermissionSetHandling.svc";
+  if (typeof CSS === 'undefined' || typeof CSS.escape !== 'function') {
+    window.CSS = window.CSS || {};
+    CSS.escape = CSS.escape || function (v) { return String(v).replace(/[^a-zA-Z0-9_\-]/g, s => '\\' + s); };
+  }
+
+  const grantsByProjection = {};
+  const deletedProjections = new Set();
+  const accessByProjection = new Map();
+  const els = { form: document.getElementById('createForm') };
+
+  // Prevent the form from submitting when a collapse header is clicked
+  els.form?.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-bs-toggle="collapse"]');
+    if (!t) return;
+    if (t.tagName === 'BUTTON' && !t.getAttribute('type')) {
+      t.setAttribute('type', 'button');
+    }
+    // No preventDefault needed—just forcing type=button is enough
+  });
+
+
+  const URL_EAG = '/api/ifs/entity_action_grant';       // POST { op:'grant'|'revoke', role, projection, entity, action }
+  const URL_PAG = '/api/ifs/projection_action_grant';   // POST { op:'grant'|'revoke', role, projection, action }
+
+  function textMatch(hay, needle){ return (hay||'').toLowerCase().includes((needle||'').trim().toLowerCase()); }
+  function truthy(v){ return v === true || String(v).toLowerCase() === 'true' || v === 1; }
+  const badgeGranted = (g) => `<span class="badge ${truthy(g) ? 'bg-success' : 'bg-secondary'}">${truthy(g) ? 'Granted' : 'Not granted'}</span>`;
+
+  // === helper: force-refresh Command badges for a given projection ===
+  async function refreshCommandBadgesForProjection(projection){
+    try{
+      const roleEff = (typeof computeEffectiveRole === 'function') ? computeEffectiveRole() : '';
+      if (!roleEff || !projection) return;
+
+      const buttons = document.querySelectorAll(
+        `[data-actions-btn="1"][data-projection="${CSS.escape(projection)}"]`
+      );
+
+      const isCurrentlyGranted = (val) => {
+        const s = String(val ?? '').trim().toLowerCase();
+        return (
+          val === true ||
+          val === 1 ||
+          s === 'true' ||
+          s === 'granted' ||
+          s === 'full' ||
+          s === 'fullaccess' ||
+          s === 'yes'
+        );
+      };
+
+      for (const btn of buttons) {
+        const proj   = btn.getAttribute('data-projection');
+        const code   = btn.getAttribute('data-code');
+        const client = btn.getAttribute('data-client') || 'web';
+
+        const res = await fetch('/api/ifs/command_actions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ role: roleEff, projection: proj, command: code, client })
+        });
+        const j = await res.json();
+        if (!res.ok) throw new Error((j && (j.error || j.details)) || `HTTP ${res.status}`);
+
+        const actions    = Array.isArray(j.actions) ? j.actions : [];
+        const grants     = actions.map(a => isCurrentlyGranted(a?.CurrentlyGranted));
+        const anyGranted = grants.some(Boolean);                              // checkbox rule
+        const allGranted = grants.length > 0 && grants.every(Boolean);        // badge rule
+
+        const row       = btn.closest('tr');
+        const badgeCell = row?.querySelector('[data-badge="1"]');
+        const cb        = row?.querySelector('input[type="checkbox"][data-grant-toggle="1"]');
+
+        if (badgeCell) badgeCell.innerHTML = badgeGranted(allGranted);
+
+        if (cb) {
+          const prev = cb.checked;
+          cb.checked = anyGranted; // select if at least one action granted
+          if (cb.checked !== prev) {
+            cb.dispatchEvent(new Event('input',  { bubbles: true }));
+            cb.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }
+      }
+
+      // Recompute section header checkbox states
+      document.querySelectorAll('.card [data-section-toggle="1"]').forEach(headerCb => {
+        const card  = headerCb.closest('.card, .accordion-item');
+        const kids  = card?.querySelectorAll('input[type="checkbox"][data-grant-toggle="1"]') || [];
+        const total = kids.length;
+        const on    = Array.from(kids).filter(k => k.checked).length;
+        headerCb.indeterminate = on > 0 && on < total;
+        headerCb.checked       = total > 0 && on === total;
+      });
+    } catch (err) {
+      console.warn('refreshCommandBadgesForProjection failed:', err);
+    }
+  }
+
+
+  function applyDisabledTooltip(btn, title){
+    if (!btn) return;
+    if (btn.parentElement && btn.parentElement.classList.contains('tooltip-wrapper')) return;
+    const wrap = document.createElement('span');
+    wrap.className = 'd-inline-block tooltip-wrapper';
+    wrap.setAttribute('data-bs-toggle', 'tooltip');
+    wrap.setAttribute('title', title);
+    btn.parentNode.insertBefore(wrap, btn);
+    wrap.appendChild(btn);
+    btn.classList.add('pe-none');
+    try { new bootstrap.Tooltip(wrap); } catch(_) {}
+  }
+
+  function removeDisabledTooltip(btn){
+    if (!btn) return;
+    if (btn.parentElement && btn.parentElement.classList.contains('tooltip-wrapper')) {
+      const wrap = btn.parentElement;
+      try { const tip = bootstrap.Tooltip.getInstance(wrap); tip && tip.dispose(); } catch(_) {}
+      wrap.replaceWith(btn);         // unwrap
+    }
+    btn.classList.remove('pe-none'); // re-enable pointer events
+  }
+
+  function setGrantUsersHref(btn) {
+    if (!btn) return;
+    const role = (typeof computeEffectiveRole === 'function') ? computeEffectiveRole() : '';
+    if (!role) return;
+    btn.href = `/assign_users?role=${encodeURIComponent(role)}&entity=users`;
+    removeDisabledTooltip(btn);                         // <-- make it truly clickable
+    btn.classList.remove('disabled', 'btn-outline-primary');
+    btn.removeAttribute('aria-disabled');
+    btn.classList.add('btn-primary');
+  }
+
+  (function () {
+    const gUsers = document.getElementById('btnGrantUsers');
+    if (!gUsers) return;
+
+    gUsers.addEventListener('click', function (e) {
+      // If still disabled or no target yet, do nothing
+      if (this.classList.contains('disabled') || !this.getAttribute('href')) return;
+
+      // Guard against double-clicks before navigation
+      if (this.dataset.loading === '1') {
+        e.preventDefault();
+        return;
+      }
+      this.dataset.loading = '1';
+
+      // Lock visual state and show spinner; allow navigation to proceed
+      this.setAttribute('aria-disabled', 'true');
+      this.innerHTML =
+        '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>' +
+        'Opening…';
+      // (optional) make it visually disabled; navigation already in-flight
+      this.classList.add('disabled');
+    });
+  })();
+
+  function setRowSelectedCount(projection, count) {
+    const el = document.querySelector(`[data-proj="${CSS.escape(projection)}"]`);
+    if (el) el.textContent = `${count} selected`;
+  }
+
+  function normalizeCommands(arr) {
+    if (!Array.isArray(arr)) return [];
+    return arr.map(item => {
+      // old server shape: ["BusinessObjectRepresentativeList_SetAsMainRep", ...]
+      if (typeof item === 'string') {
+        const s = item.trim();
+        return { code: s, label: s };
+      }
+      // new server shape: [{command, label, client, projection}, ...]
+      if (item && typeof item === 'object') {
+        const code  = String(item.command ?? item.Command ?? '').trim();
+        const label = String(item.label   ?? item.Label   ?? '').trim();
+        if (!code) return null;
+        return { code, label: label || code };
+      }
+      return null;
+    }).filter(Boolean);
+  }
+
+
+  function updateJSON() {
+    const items = Object.keys(grantsByProjection).map(p => ({
+      projection: p,
+      commands: grantsByProjection[p],
+      client: "web"
+    })).filter(x => x.commands.length > 0);
+    document.getElementById('command_grants_json').value = JSON.stringify({ items });
+  }
+
+  function syncOutgoingJSON(){
+    document.getElementById('deleted_projections_json').value =
+      JSON.stringify(Array.from(deletedProjections));
+    try {
+      const box = document.getElementById('command_grants_json');
+      const j = box.value ? JSON.parse(box.value) : { items: [] };
+      const items = j.items || [];
+      const byProj = new Map(items.map(it => [it.projection, it]));
+      accessByProjection.forEach((acc, proj) => {
+        if (acc === 'ReadOnly') {
+          if (!byProj.has(proj)) items.push({ projection: proj, commands: [], client: "web", access: 'ReadOnly' });
+          else byProj.get(proj).access = 'ReadOnly';
+        } else {
+          if (byProj.has(proj)) delete byProj.get(proj).access;
+        }
+      });
+      box.value = JSON.stringify({ items });
+    } catch(_) {}
+  }
+
+  function initAccessMap() {
+    document.querySelectorAll('.access-select').forEach(sel => {
+      accessByProjection.set(sel.dataset.projection, sel.value);
+      sel.addEventListener('change', () => {
+        accessByProjection.set(sel.dataset.projection, sel.value);
+        syncOutgoingJSON();
+      });
+    });
+    syncOutgoingJSON();
+  }
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action="delete-row"]');
+    if (!btn) return;
+    const proj = btn.getAttribute('data-projection');
+    if (!proj) return;
+    if (!confirm(`Delete "${proj}" from this list?`)) return;
+
+    deletedProjections.add(proj);
+
+    const badge = document.querySelector(`[data-proj="${CSS.escape(proj)}"]`);
+    const mainRow = badge?.closest('tr');
+    const collapseRow = mainRow?.nextElementSibling;
+    if (collapseRow && collapseRow.matches('.collapse')) collapseRow.remove();
+    if (mainRow) mainRow.remove();
+
+    accessByProjection.delete(proj);
+    delete grantsByProjection[proj];
+
+    updateJSON();
+    syncOutgoingJSON();
+  });
+
+  function freezeAccessSelects() {
+    document.querySelectorAll('.access-select').forEach(sel => { sel.disabled = true; });
+    document.querySelectorAll('[data-access-frozen]').forEach(span => span.classList.remove('d-none'));
+  }
+
+  function initCollapseTips(){
+    document.querySelectorAll('.collapse-btn').forEach(btn => {
+      if (btn.disabled) {
+        applyDisabledTooltip(btn, 'Create and grant all to enable this');
+        btn.addEventListener('click', (ev) => { ev.preventDefault(); ev.stopPropagation(); }, true);
+      }
+    });
+    const gUsers = document.getElementById('btnGrantUsers');
+    if (gUsers && gUsers.classList.contains('disabled')) {
+      applyDisabledTooltip(gUsers, 'Create and grant all to enable this');
+    }
+  }
+
+  function enableCollapses(){
+    document.querySelectorAll('.collapse-btn').forEach(btn => {
+      btn.disabled = false;
+      btn.removeAttribute('title');
+      if (btn.parentElement?.classList.contains('tooltip-wrapper')) {
+        const wrap = btn.parentElement;
+        wrap.replaceWith(btn);
+        btn.classList.remove('pe-none');
+      }
+    });
+  }
+
+  // ================== EAG / PAG tabs ==================
+  const paneState = new WeakMap(); // paneEl -> { kind: 'eag'|'pag', originals: Map(key->bool) }
+
+  document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(btn => {
+      btn.addEventListener('shown.bs.tab', async (e) => {
+        const targetSel = e.target.getAttribute('data-bs-target');
+        const pane = document.querySelector(targetSel);
+        const tr = pane.closest('tr').previousElementSibling;
+        const projection = tr.querySelector('.proj-title .fw-semibold').textContent.trim();
+        const roleEff = computeEffectiveRole();
+
+        // keep Grant All context up-to-date (optional, harmless)
+        const grantAllBtn = document.getElementById('btnGrantAll');
+        if (grantAllBtn) {
+          grantAllBtn.dataset.role = roleEff || '';
+          grantAllBtn.dataset.projection = projection || '';
+        }
+
+        function renderBootstrapTable(pane, rows, cols, isEag) {
+          pane.innerHTML = `
+            <div class="tab-toolbar">
+              <div class="input-group input-group-sm" style="max-width:360px">
+                <span class="input-group-text">Search</span>
+                <input class="form-control" type="search" placeholder="Filter ${isEag ? 'entity/action' : 'actions'}…" data-search-table="1">
+              </div>
+
+              <div class="ms-auto d-flex align-items-center gap-2">
+                <button class="btn btn-sm btn-primary" type="button" data-save="1" data-save-btn="1">Save</button>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover table-sm align-middle mb-0">
+                <thead class="table-light"><tr>
+                  <th style="width:44px"></th>${cols.map(c=>`<th scope="col">${c}</th>`).join('')}
+                </tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          `;
+
+          const tbody = pane.querySelector('tbody');
+          const originals = new Map();
+
+          rows.forEach((r) => {
+            const granted = (r.CurrentlyGranted ?? r.Granted ?? r.Grant ?? r.IsGranted ?? false);
+            const key = isEag ? `${r.Entity}:::${r.Action}` : r.Action;
+            originals.set(key, !!granted);
+
+            const tr = document.createElement('tr');
+            tr.dataset.kind   = isEag ? 'eag' : 'pag';
+            tr.dataset.entity = isEag ? (r.Entity || '') : '';
+            tr.dataset.action = r.Action || '';
+
+            tr.innerHTML = `
+              <td>
+                <div class="form-check m-0">
+                  <input class="form-check-input" type="checkbox" ${granted ? 'checked' : ''} data-grant-toggle="1">
+                </div>
+              </td>
+              ${
+                isEag
+                  ? `<td class="text-nowrap">${r.Entity || ''}</td>
+                    <td class="text-nowrap">${r.Action || ''}</td>
+                    <td data-badge="1">${badgeGranted(granted)}</td>`
+                  : `<td class="text-nowrap">${r.Action || ''}</td>
+                    <td data-badge="1">${badgeGranted(granted)}</td>`
+              }
+            `;
+            tbody.appendChild(tr);
+          });
+
+          paneState.set(pane, { kind: isEag ? 'eag' : 'pag', originals });
+
+          const search = pane.querySelector('[data-search-table="1"]');
+          search?.addEventListener('input', () => {
+            const q = search.value || '';
+            tbody.querySelectorAll('tr').forEach(row => {
+              const txt = row.textContent || '';
+              row.style.display = textMatch(txt, q) ? '' : 'none';
+            });
+          });
+
+          tbody.addEventListener('change', (ev) => {
+            const cb = ev.target.closest('[data-grant-toggle="1"]');
+            if (!cb) return;
+            const badgeCell = cb.closest('tr')?.querySelector('[data-badge="1"]');
+            if (badgeCell) badgeCell.innerHTML = badgeGranted(cb.checked);
+          });
+
+          pane.querySelector('[data-save="1"]').addEventListener('click', async (ev) => {
+            const btn = ev.currentTarget;
+            beginSyncUI(pane, { label: 'Saving…', status: 'Do not close — syncing changes with IFS…' });
+            try {
+              await savePaneChanges(pane, btn);
+              await persistActionCheckboxesInPane(pane);
+
+              // ✅ end saving state BEFORE we re-render anything
+              showFlash('success', 'Saved successfully.');
+              endSyncUI(pane, true);
+
+              // Now it’s safe to refresh/hydrate UI
+              const projection = pane.closest('tr').previousElementSibling
+                .querySelector('.proj-title .fw-semibold').textContent.trim();
+              await refreshCommandBadgesForProjection(projection);
+            } catch (err) {
+              showFlash('danger', 'Save failed: ' + err.message);
+              endSyncUI(pane, false);
+            }
+          });
+
+        }
+
+        async function renderGroupedEagAccordion(pane, groups) {
+          // inject once: compact subsection styling (Bootstrap-friendly)
+          if (!document.getElementById('eag-subsec-styles')) {
+            const st = document.createElement('style');
+            st.id = 'eag-subsec-styles';
+            st.textContent = `
+              .subsec-card{border:1px solid var(--bs-border-color);border-radius:.5rem;overflow:hidden}
+              .subsec-head{background:var(--bs-tertiary-bg,#f8f9fa);padding:.35rem .6rem}
+              .subsec-head .btn-toggle{font-size:.9rem;font-weight:600;color:var(--bs-body-color);text-decoration:none}
+              .subsec-head .count-badge{font-size:.7rem}
+              .subsec-body{padding:.25rem .4rem .5rem .4rem}
+              .subsec-head .chev{display:inline-block;transition:transform .2s ease;margin-right:.25rem}
+              .subsec-head .btn-toggle.collapsed .chev{transform:rotate(-90deg)}
+              .hdr-ctrls{font-size:.875rem;line-height:1.25}
+              .hdr-ctrls small{opacity:.75}
+            `;
+            document.head.appendChild(st);
+          }
+
+          // 1) fetch commands & assistants ownership (once per render)
+          let commands = [];
+          let assistantsByOwner = new Map();
+          try {
+            const [cr, ar] = await Promise.all([
+              fetch(`/api/ifs/action_commands?projection=${encodeURIComponent(projection)}`),
+              fetch(`/api/ifs/assistants_grouped?role=${encodeURIComponent(roleEff)}&projection=${encodeURIComponent(projection)}`)
+            ]);
+
+            async function safeJson(resp) {
+              const text = await resp.text();
+              try { return JSON.parse(text); } catch { return null; }
+            }
+
+            const [cj, aj] = await Promise.all([safeJson(cr), safeJson(ar)]);
+            // populate (no shadowing, no duplicates)
+            commands = (cr.ok && cj && Array.isArray(cj.commands)) ? normalizeCommands(cj.commands) : [];
+            if (ar.ok && aj && aj.ok && Array.isArray(aj.groups)) {
+              assistantsByOwner = new Map(aj.groups.map(g => [g.owner, g.assistants || []]));
+            }
+          } catch {
+            // ignore; sections will just be empty
+          }
+
+          // Shell with 3 headed sections: Entities, Virtuals, Other commands
+          pane.innerHTML = `
+            <div class="tab-toolbar">
+              <div class="input-group input-group-sm" style="max-width:360px">
+                <span class="input-group-text">Search</span>
+                <input class="form-control" type="search" placeholder="Filter entity / action / command…" data-search-accordion="1">
+              </div>
+              <div class="ms-auto d-flex align-items-center gap-2">
+                <button class="btn btn-sm btn-primary" type="button" data-save="1" data-save-btn="1">Save</button>
+              </div>
+            </div>
+
+            <h6 class="mt-2">Entities</h6>
+            <div class="accordion" id="eag-acc-entities-${CSS.escape(projection)}"></div>
+
+            <h6 class="mt-4">Virtuals</h6>
+            <div class="accordion" id="eag-acc-virtuals-${CSS.escape(projection)}"></div>
+
+            <div id="eag-acc-others-wrap-${CSS.escape(projection)}" class="mt-4"></div>
+          `;
+
+          const accEntities = pane.querySelector(`#eag-acc-entities-${CSS.escape(projection)}`);
+          const accVirtuals = pane.querySelector(`#eag-acc-virtuals-${CSS.escape(projection)}`);
+          const otherWrap   = pane.querySelector(`#eag-acc-others-wrap-${CSS.escape(projection)}`);
+
+          // ---------- helpers ----------
+          const unique = arr => Array.from(new Set(arr));
+          const norm = s => (s || '').replace(/[^a-z0-9]+/gi, '').toLowerCase();
+
+          // Extract canonical entity code from group: if "Pretty Name(Code)" → "Code"
+          const entityCodeFromGroup = (g) => {
+            const src = String(g.entity || '');
+            const m = src.match(/\(([^)]+)\)\s*$/);
+            return (m && m[1]) ? m[1].trim() : src.trim();
+          };
+
+          // collect entity universe (handles merged "A,B")
+          const rawEntities = [];
+          groups.forEach(g => String(g.entity || '').split(',').forEach(x => x && rawEntities.push(x.trim())));
+          const canonicalEntities   = unique(rawEntities);
+          const canonicalNoVirtual  = unique(rawEntities.map(e => e.endsWith('Virtual') ? e.slice(0, -7) : e));
+
+          // Commands → entity mapper
+          function entityForCommand(cmd) {
+            const label = cmd.label || '';
+            const code  = cmd.command || cmd.code || '';
+
+            const left = label.split(' / ')[0]?.trim();
+            if (left) {
+              const nLeft = norm(left);
+              let hit = canonicalEntities.find(e => norm(e) === nLeft);
+              if (hit) return hit;
+              hit = canonicalNoVirtual.find(e => norm(e) === nLeft);
+              if (hit) return (rawEntities.find(r => r.replace(/Virtual$/, '') === hit) || hit);
+            }
+
+            let stem = (code.split('_')[0] || '').trim().replace(/(Command|Assistant|Form)$/i, '');
+            const stemNoList = stem.replace(/(List|Lists|Lines)$/i, '');
+            const candidates = unique([stem, stemNoList]);
+
+          for (const cand of candidates) {
+              const n = norm(cand);
+              let hit = canonicalEntities.find(e => norm(e) === n);
+              if (hit) return hit;
+              hit = canonicalNoVirtual.find(e => norm(e) === n);
+              if (hit) return (rawEntities.find(r => r.replace(/Virtual$/, '') === hit) || hit);
+            }
+
+            if (/^Form_/i.test(code) && canonicalEntities.includes('PurchaseOrder')) return 'PurchaseOrder';
+            return undefined;
+          }
+
+          // Commands bucket by entity (grantable like actions)
+          const cmdsByEntity = new Map();
+          commands.forEach(c => {
+            const ent = entityForCommand(c);
+            if (!ent) return;
+            if (!cmdsByEntity.has(ent)) cmdsByEntity.set(ent, []);
+            // flag as grantable; we’ll use 'cmd' kind for these rows
+            const code = c.command || c.code;
+            cmdsByEntity.get(ent).push({ entity: ent, command: code, label: c.label, granted: !!c.granted });
+          });
+
+          // ---------- Virtual group detection and splitting ----------
+          const getCodeInParens = (s) => {
+            const m = String(s || '').match(/\(([^)]+)\)\s*$/); // pick the word in (...) at end
+            return m ? m[1].trim() : null;
+          };
+
+          const isVirtualGroup = (g) => {
+            // Case 1: explicit merged virtual group
+            if (Array.isArray(g.merged_entities) && g.merged_entities.length) return true;
+
+            // Case 2: try code inside brackets of the entity label
+            // e.g. "Add from Template(AddFromTemplateVirtual)" -> "AddFromTemplateVirtual"
+            const entParens = getCodeInParens(g.entity);
+            if (entParens && /Virtuals?$/i.test(entParens)) return true;
+
+            // Case 3: fall back to raw entity text (if it literally ends with Virtual)
+            const entRaw = String(g.entity || '').trim();
+            if (/Virtuals?$/i.test(entRaw)) return true;
+
+            // Case 4: try the friendly/title text "(SomethingVirtual)"
+            const titleParens = getCodeInParens(g.title || g.friendly);
+            if (titleParens && /Virtuals?$/i.test(titleParens)) return true;
+
+            return false;
+          };
+
+          // Split groups into normal Entities and Virtuals
+          const normalGroups  = groups.filter(g => !isVirtualGroup(g));
+          const virtualGroups = groups.filter(g =>  isVirtualGroup(g));
+
+          // Track which command codes were mapped to some entity
+          const matchedCodes = new Set();
+          cmdsByEntity.forEach(list => list.forEach(c => matchedCodes.add(c.command)));
+          const unmatchedCommands = (commands || []).filter(c => !matchedCodes.has(c.command || c.code));
+          // ownership maps (preserved)
+          const virtualGroupByEntity = new Map();
+          groups.forEach(g => {
+            if (!isVirtualGroup(g)) return;
+            const ents = (Array.isArray(g.merged_entities) && g.merged_entities.length)
+              ? g.merged_entities
+              : String(g.entity || '').split(',').map(s => s.trim()).filter(Boolean);
+            ents.forEach(v => virtualGroupByEntity.set(v, g));
+          });
+
+          const virtualsForOwner = new Map();
+          assistantsByOwner.forEach((alist, owner) => {
+            alist.forEach(a => {
+              const vg = virtualGroupByEntity.get(a.virtual);
+              if (!vg) return;
+              if (!virtualsForOwner.has(owner)) virtualsForOwner.set(owner, []);
+              const arr = virtualsForOwner.get(owner);
+              if (!arr.includes(vg)) arr.push(vg);
+            });
+          });
+
+          const movedVirtualGroups = new Set();
+          virtualsForOwner.forEach(arr => arr.forEach(g => movedVirtualGroups.add(g)));
+
+          // --- NEW: hydrate command badges (and checkboxes) from IFS for grouped EAG cards ---
+          window.hydrateGroupedCommandBadges = async function (root) {
+            const role = (typeof computeEffectiveRole === 'function') ? computeEffectiveRole() : (roleEff || '');
+            if (!role) return;
+
+            // Every "View actions" button marks a command row; we can hydrate per button
+            const buttons = root.querySelectorAll('[data-actions-btn="1"]');
+
+            for (const btn of buttons) {
+              const proj   = btn.getAttribute('data-projection') || projection;
+              const code   = btn.getAttribute('data-code');
+              const client = btn.getAttribute('data-client') || 'web';
+              if (!proj || !code) continue;
+
+              // Read authoritative state from IFS (same endpoint used elsewhere)
+              const res = await fetch('/api/ifs/command_actions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ role, projection: proj, command: code, client })
+              });
+              const j = await res.json().catch(() => ({}));
+              if (!res.ok || !j) continue;
+
+              // Normalize like your other paths
+              const actions = (j.actions || []).map(a => {
+                const entity  = String(a.EntityName || a.ProjectionName || proj || '(Projection)').trim();
+                const action  = String(a.ActionName || a.Action || '').trim();
+                const cur     = a.CurrentlyGranted === true ||
+                                a.CurrentlyGranted === 1 ||
+                                String(a.CurrentlyGranted).toLowerCase() === 'true';
+                const next    = String(a.NewAccessLevel || '').trim().toLowerCase();
+                const op      = String(a.Operation || '').trim().toLowerCase();
+                const granted = cur || next === 'grant' || op === 'grant';
+                return { entity, action, granted };
+              }).filter(x => x.action);
+
+              // Respect the entity scope of the card (e.g., "PurchaseOrder")
+              const card     = btn.closest('.accordion-item, .card.shadow-sm');
+              const scopeSet = new Set(String(card?.dataset?.entityScope || '')
+                                .split(',').map(s => s.trim()).filter(Boolean));
+
+              // Same rule as the hidden Commands tab: command is Granted if ANY action is granted.
+              // Keep scope as a soft preference only.
+              // Badge rule: Granted only if ALL actions are granted (scope is a soft preference)
+              let allGrant = false;
+              if (actions.length > 0) {
+                const inScope = actions.filter(a => scopeSet.size === 0 || scopeSet.has(a.entity));
+                const arr = inScope.length ? inScope : actions;
+                allGrant = arr.every(a => a.granted === true);
+              }
+              const anyGrant = actions.some(a => a.granted === true);
+
+              // Update the pill & the row checkbox
+              const row       = btn.closest('tr');
+              const badgeCell = row?.querySelector('[data-badge="1"]');
+              const cb        = row?.querySelector('input[type="checkbox"][data-grant-toggle="1"]');
+              if (badgeCell) badgeCell.innerHTML = badgeGranted(allGrant);
+              if (cb)        cb.checked = !!anyGrant;
+
+            }
+          }
+
+
+          // ----- ROW RENDERING (commands vs. action rows) -----
+          function makeRows(items) {
+            if (!items || !items.length) return '<div class="text-muted small">None</div>';
+
+            const isCommandsList = items.every(it => !!it.command && !it.action);
+
+            if (isCommandsList) {
+              // RENDER: Commands with "View actions" button + collapsible
+              const rows = items.map(c => {
+                const code   = c.command || c.code;
+                const label  = c.label || code;
+                const proj   = projection;
+                const client = c.client || 'web';
+                const safeRowKey = `${proj}:${code}`.replace(/[^a-zA-Z0-9:_-]/g, '_');
+
+                return `
+                  <tr>
+                    <td style="width:44px"></td>
+                    <td class="text-nowrap">${label}<div class="text-muted small">${code}</div></td>
+                    <td class="text-end">
+                      <button type="button"
+                              class="btn btn-sm btn-outline-primary"
+                              data-actions-btn="1"
+                              data-code="${code}"
+                              data-label="${label}"
+                              data-projection="${proj}"
+                              data-client="${client}"
+                              aria-expanded="false"
+                              aria-controls="actions-${safeRowKey}">
+                        View actions
+                      </button>
+                    </td>
+                  </tr>
+                  <tr class="collapse" id="actions-${safeRowKey}">
+                    <td colspan="3">
+                      <div class="p-2 border-start border-end" data-cmd-detail="1">
+                        <table class="table table-sm table-hover mb-0" data-actions-list="1">
+                          <thead>
+                            <tr>
+                              <th>Entity</th>
+                              <th>Action</th>
+                              <th class="text-end">Granted</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr><td colspan="3" class="small text-muted">Loading actions…</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </td>
+                  </tr>`;
+              }).join('');
+
+              return `
+                <div class="table-responsive">
+                  <table class="table table-hover table-sm align-middle mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th style="width:44px"></th>
+                        <th>Command</th>
+                        <th class="text-end">View</th>
+                      </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                  </table>
+                </div>`;
+            }
+
+            // DEFAULT: normal EAG/PAG rows (Entity | Action | Grant)
+            const rows = items.map(it => {
+              const entity  = it.entity || it.Entity || '';
+              const action  = it.action || it.Action || '';
+              const granted = !!(it.granted ?? it.CurrentlyGranted ?? it.Granted ?? it.Grant ?? it.IsGranted);
+              return `
+                <tr data-kind="eag" data-entity="${entity}" data-action="${action}">
+                  <td>
+                    <div class="form-check m-0">
+                      <input class="form-check-input" type="checkbox" ${granted ? 'checked' : ''} data-grant-toggle="1">
+                    </div>
+                  </td>
+                  <td class="text-nowrap">${entity}</td>
+                  <td class="text-nowrap">${action}</td>
+                  <td data-badge="1">${badgeGranted(granted)}</td>
+                </tr>`;
+            }).join('');
+
+            return `
+              <div class="table-responsive">
+                <table class="table table-hover table-sm align-middle mb-0">
+                  <thead class="table-light"><tr>
+                    <th style="width:44px"></th>
+                    <th>Entity</th><th>Action</th><th>Grant</th>
+                  </tr></thead>
+                  <tbody>${rows}</tbody>
+                </table>
+              </div>`;
+          }
+
+          // Card-level master checkbox
+          function wireCardMaster(card) {
+            const master  = card.querySelector('[data-card-master="1"]');
+            const partial = card.querySelector('[data-card-partial]');
+            if (!master) return;
+
+            const body = card.querySelector('.accordion-body');
+            const getChildren = () => Array.from(
+              (body || card).querySelectorAll('input[type="checkbox"][data-grant-toggle="1"]')
+            );
+
+            const sync = () => {
+              const children = getChildren();
+              const total   = children.length;
+              const checked = children.filter(c => c.checked).length;
+              master.indeterminate = checked > 0 && checked < total;
+              master.checked       = total > 0 && checked === total;
+              if (partial) partial.classList.toggle('d-none', !(checked > 0 && checked < total));
+            };
+
+            master.addEventListener('change', () => {
+              const children = getChildren();
+              // Bulk mode: avoid per-child change loops; update badges manually
+              card.dataset.bulk = '1';
+              children.forEach(cb => {
+                cb.checked = master.checked;
+                const badgeCell = cb.closest('tr')?.querySelector('[data-badge="1"]');
+                if (badgeCell) badgeCell.innerHTML = badgeGranted(cb.checked);
+              });
+              delete card.dataset.bulk;
+              const actionChecks = card.querySelectorAll('input[data-action-check="1"]');
+              actionChecks.forEach(chk => {
+                chk.checked = master.checked;
+                // update the small badge at the right of each action row
+                const li = chk.closest('li');
+                const badge = li && li.querySelector('[data-grant-badge="1"]');
+                if (badge) {
+                  badge.classList.toggle('bg-success', master.checked);
+                  badge.classList.toggle('bg-secondary', !master.checked);
+                  badge.textContent = master.checked ? 'Granted' : 'Not granted';
+                }
+                // keep the parent command checkbox state (checked/indeterminate) in sync
+                if (typeof syncParentCheckboxState === 'function') {
+                  syncParentCheckboxState(chk.dataset.key);
+                }
+              });
+              // Recompute header state once, after all children are set
+              sync();
+            });
+
+            (body || card).addEventListener('change', (ev) => {
+              if (ev.target && ev.target.matches('input[type="checkbox"][data-grant-toggle="1"]')) {
+                sync();
+              }
+            });
+
+            sync();
+          }
+
+          // helper → one subsection card
+          function subSectionHTML(title, collapseId, items, show = true) {
+            const count = (items && items.length) ? items.length : 0;
+            const inner = count ? makeRows(items) : '<div class="p-2 text-muted small">None</div>';
+            return `
+              <div class="subsec-card">
+                <div class="subsec-head d-flex align-items-center justify-content-between">
+                  <button class="btn btn-toggle ${show ? '' : 'collapsed'}" type="button"
+                          data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${show}">
+                    <span class="chev">▾</span>${title}
+                    ${count ? `<span class="badge rounded-pill text-bg-secondary count-badge ms-2">${count}</span>` : ''}
+                  </button>
+                </div>
+                <div id="${collapseId}" class="collapse ${show ? 'show' : ''}">
+                  <div class="subsec-body">
+                    ${inner}
+                  </div>
+                </div>
+              </div>`;
+          }
+
+          // ---- CRUD detection (only for *commands*; groups' own g.other stay untouched) ----
+          function isCrudCommand(cmdLike) {
+            const t = `${cmdLike.label || ''} ${cmdLike.command || ''}`;
+            return /\b(Create|Update|Delete)\b/i.test(t) || /(Create|Update|Delete)/.test(cmdLike.command || '');
+          }
+
+          // Render owners (skip virtual groups we’re moving)
+          const ownersToRender = groups.filter(g => !isVirtualGroup(g) || !movedVirtualGroups.has(g));
+
+          ownersToRender.forEach((g, idx) => {
+            const titleText = g.title || g.friendly || g.entity;
+            const title = (titleText !== g.entity)
+              ? `${titleText} <span class="text-muted">(${g.entity})</span>`
+              : titleText;
+
+            const groupKey = entityCodeFromGroup(g);
+            const allCmdsForEnt = cmdsByEntity.get(groupKey) || [];
+            const cmdsNonCrud   = allCmdsForEnt.filter(c => !isCrudCommand(c));
+            const cmdsCrud      = allCmdsForEnt.filter(isCrudCommand);
+            const mergedCrud    = [ ...(g.crud || []), ...cmdsCrud ];
+
+            const id = `acc-${CSS.escape(projection)}-${idx}`;
+
+            const bodyHTML = `
+              <div class="vstack gap-3">
+                ${subSectionHTML('Commands',      `${id}-cmds`,    cmdsNonCrud, true)}
+                ${subSectionHTML('Status change', `${id}-status`,  g.status_changes || [], true)}
+                ${subSectionHTML('CRUD',          `${id}-crud`,    mergedCrud, true)}
+                ${subSectionHTML('Cleanup',       `${id}-cleanup`, g.cleanup || [], true)}
+                ${subSectionHTML('Other',         `${id}-other`,   g.other || [], true)}
+              </div>`;
+
+            const card = document.createElement('div');
+            card.className = 'accordion-item';
+            // NEW: stamp the card with the exact entity scope used by this group
+            card.dataset.entityScope = entityCodeFromGroup(g);
+            const parentId = isVirtualGroup(g)
+              ? `eag-acc-virtuals-${CSS.escape(projection)}`
+              : `eag-acc-entities-${CSS.escape(projection)}`;
+
+            card.innerHTML = `
+              <h2 class="accordion-header" id="${id}-hdr">
+                <div class="d-flex align-items-center justify-content-between w-100 px-3 py-2">
+                  <button class="accordion-button collapsed flex-grow-1 px-0" type="button"
+                          data-bs-toggle="collapse"
+                          data-bs-target="#${id}-col" aria-expanded="false" aria-controls="${id}-col">
+                    ${title}
+                  </button>
+                  <div class="d-flex align-items-center gap-2 ms-3 text-nowrap hdr-ctrls">
+                    <label class="m-0 d-inline-flex align-items-center gap-1">
+                      <input class="form-check-input" type="checkbox" data-card-master="1" aria-label="Select all in this section">
+                      <span>Select all</span>
+                    </label>
+                    <small class="text-muted d-none" data-card-partial>Only one or few items are selected</small>
+                  </div>
+                </div>
+              </h2>
+              <div id="${id}-col" class="accordion-collapse collapse" aria-labelledby="${id}-hdr"
+                  data-bs-parent="#${parentId}">
+                <div class="accordion-body">${bodyHTML}</div>
+              </div>`;
+
+            (isVirtualGroup(g) ? accVirtuals : accEntities).appendChild(card);
+
+            wireCardMaster(card);
+          });
+
+          // ---------- OTHER COMMANDS (unmatched) UI-only ----------
+          (function renderOtherCommands() {
+            const count = unmatchedCommands.length;
+            const secId = `others-${CSS.escape(projection)}`;
+
+            const rows = count ? unmatchedCommands.map(c => {
+              const code  = c.command || c.code;
+              const label = c.label || code;
+              return `
+              <tr>
+                <td style="width:44px">
+                  <div class="form-check m-0">
+                    <input class="form-check-input" type="checkbox" data-other-toggle="1">
+                  </div>
+                </td>
+                <td class="text-nowrap">${label}</td>
+                <td class="text-muted small">${code}</td>
+              </tr>
+            `}).join('') : '';
+
+            const inner = count ? `
+              <div class="table-responsive">
+                <table class="table table-hover table-sm align-middle mb-0">
+                  <thead class="table-light">
+                    <tr><th style="width:44px"></th><th>Command</th><th>Code</th></tr>
+                  </thead>
+                  <tbody>${rows}</tbody>
+                </table>
+              </div>`
+              : '<div class="p-2 text-muted small">None</div>';
+
+            otherWrap.innerHTML = `
+              <div class="subsec-card">
+                <div class="subsec-head d-flex align-items-center justify-content-between">
+                  <button class="btn btn-toggle" type="button"
+                          data-bs-toggle="collapse" data-bs-target="#${secId}" aria-expanded="true">
+                    <span class="chev">▾</span>Other commands
+                    ${count ? `<span class="badge rounded-pill text-bg-secondary count-badge ms-2">${count}</span>` : ''}
+                  </button>
+                  <div class="d-flex align-items-center gap-2 text-nowrap hdr-ctrls">
+                    <label class="m-0 d-inline-flex align-items-center gap-1">
+                      <input class="form-check-input" type="checkbox" data-other-master="1" aria-label="Select all other commands">
+                      <span>Select all</span>
+                    </label>
+                    <small class="text-muted d-none" data-other-partial>Only one or few items are selected</small>
+                  </div>
+                </div>
+                <div id="${secId}" class="collapse show">
+                  <div class="subsec-body">
+                    ${inner}
+                  </div>
+                </div>
+              </div>`;
+          })();
+
+          // Wire the "Other commands" master (UI-only)
+          (function wireOtherMaster() {
+            const master  = otherWrap.querySelector('[data-other-master="1"]');
+            const partial = otherWrap.querySelector('[data-other-partial]');
+            if (!master) return;
+
+            const getChildren = () => Array.from(otherWrap.querySelectorAll('input[type="checkbox"][data-other-toggle="1"]'));
+
+            const sync = () => {
+              const kids = getChildren();
+              const total = kids.length;
+              const checked = kids.filter(k => k.checked).length;
+              master.indeterminate = checked > 0 && checked < total;
+              master.checked = total > 0 && checked === total;
+              if (partial) partial.classList.toggle('d-none', !(checked > 0 && checked < total));
+            };
+
+            master.addEventListener('change', () => {
+              const kids = getChildren();
+              kids.forEach(k => { k.checked = master.checked; });
+              sync();
+            });
+
+            otherWrap.addEventListener('change', (ev) => {
+              if (ev.target && ev.target.matches('input[type="checkbox"][data-other-toggle="1"]')) sync();
+            });
+
+            sync();
+          })();
+
+          // Search across Entities, Virtuals, and Other commands
+          const search = pane.querySelector('[data-search-accordion="1"]');
+          search?.addEventListener('input', () => {
+            const q = (search.value || '').toLowerCase();
+
+            [accEntities, accVirtuals].forEach(acc => {
+              acc.querySelectorAll('.accordion-item').forEach(item => {
+                const txt = (item.textContent || '').toLowerCase();
+                item.style.display = txt.includes(q) ? '' : 'none';
+              });
+            });
+
+            // filter "Other commands"
+            otherWrap.querySelectorAll('tbody tr').forEach(tr => {
+              const txt = (tr.textContent || '').toLowerCase();
+              tr.style.display = txt.includes(q) ? '' : 'none';
+            });
+          });
+
+          // badge updates for action rows (commands have checkboxes too)
+          [accEntities, accVirtuals].forEach(acc => {
+            acc.addEventListener('change', (ev) => {
+              const cb = ev.target.closest('[data-grant-toggle="1"]');
+              if (!cb) return;
+              const badgeCell = cb.closest('tr')?.querySelector('[data-badge="1"]');
+              if (badgeCell) badgeCell.innerHTML = badgeGranted(cb.checked);
+            });
+          });
+
+          // Originals map (only rows with data-grant-toggle checkboxes)
+          const originals = new Map();
+          [accEntities, accVirtuals].forEach(acc => {
+            acc.querySelectorAll('tbody tr').forEach(tr => {
+              const cb = tr.querySelector('input[type="checkbox"][data-grant-toggle="1"]');
+              if (!cb) return;
+              const entity = tr.dataset.entity || '';
+              const action = tr.dataset.action || tr.dataset.command || '';
+              originals.set(`${entity}:::${action}`, cb.checked);
+            });
+          });
+          paneState.set(pane, { kind: 'eag', originals });
+
+          // Try to find a working PermissionSetHandling.svc base by probing $metadata (GET)
+          async function resolveIfsProjectionBase() {
+            const metaBase = document.querySelector('meta[name="ifs-projection-base"]')?.content?.trim();
+            let override = (window.ifsProjectionBase || metaBase || '').replace(/\/+$/,'');
+
+            if (!override) {
+              try {
+                const saved = localStorage.getItem('ifsProjectionBase');
+                if (saved) override = saved.replace(/\/+$/,'');
+              } catch {}
+            }
+
+            const CANDIDATES = (override ? [override] : []).concat([
+              '/main/ifsapplications/projection/v1/PermissionSetHandling.svc',
+              '/main/ifsapplications/projection/PermissionSetHandling.svc',
+              '/ifsapplications/projection/PermissionSetHandling.svc',
+              '/projection/PermissionSetHandling.svc',
+              '/ifs/projection/PermissionSetHandling.svc',
+              '/ifs/projection/v1/PermissionSetHandling.svc',
+              '/api/ifs/projection/PermissionSetHandling.svc',
+              '/api/ifs/projection/v1/PermissionSetHandling.svc',
+              '/api/ifs/PermissionSetHandling.svc',
+              '/PermissionSetHandling.svc'
+            ]);
+
+            async function probe(base) {
+              const url = `${base.replace(/\/+$/,'')}/$metadata`;
+              try {
+                const r = await fetch(url, { method: 'GET' });
+                if (r.status === 200 || r.status === 401 || r.status === 403) return base.replace(/\/+$/,'');
+                if (r.status === 404) {
+                  const r2 = await fetch(base, { method: 'GET' });
+                  if (r2.status === 200 || r2.status === 401 || r2.status === 403) return base.replace(/\/+$/,'');
+                }
+              } catch { /* ignore */ }
+              return null;
+            }
+
+            for (const c of CANDIDATES) {
+              const found = await probe(c);
+              if (found) return found;
+            }
+
+            const manual = window.prompt(
+              "Enter the full path to PermissionSetHandling.svc (e.g. /main/ifsapplications/projection/PermissionSetHandling.svc)"
+            );
+            if (manual && manual.trim()) {
+              const base = manual.trim().replace(/\/+$/,'');
+              const ok = await probe(base);
+              if (ok) {
+                try { localStorage.setItem('ifsProjectionBase', ok); } catch {}
+                window.ifsProjectionBase = ok;
+                return ok;
+              }
+            }
+
+            return null;
+          }
+
+          // drop-in replacement; keep the same name/signature
+          async function grantCommandsInPane(paneEl) {
+            const selectedCmdRows = Array.from(
+              paneEl.querySelectorAll('tr[data-kind="cmd"] input[type="checkbox"][data-grant-toggle="1"]:checked')
+            ).map(cb => cb.closest('tr'));
+            if (!selectedCmdRows.length) return;
+
+            const seen = new Set();
+            const selections = [];
+            for (const tr of selectedCmdRows) {
+              const client  = tr.dataset.entity || '';
+              const command = tr.dataset.command || '';
+              const card    = tr.closest('.accordion-item, .card.shadow-sm');
+              const scope   = (card?.dataset.entityScope || '').trim(); // e.g. "PurchaseOrder" or "CPOHeaderVirtual,CPOLineVirtual"
+              const k = `${client}:::${command}`;
+              if (!client || !command || seen.has(k)) continue;
+              seen.add(k);
+              selections.push({ client, command, scope });
+            }
+
+            if (!selections.length) return;
+
+            const role = (typeof computeEffectiveRole === 'function') ? computeEffectiveRole() : '';
+            const tr = paneEl.closest('tr').previousElementSibling;
+            const projection = tr?.querySelector('.proj-title .fw-semibold')?.textContent?.trim() || '';
+            if (!role || !projection) throw new Error('Missing role or projection.');
+
+            const postJSON = (url, body) => fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+              body: JSON.stringify(body)
+            }).then(async r => {
+              const txt = await r.text().catch(()=> '');
+              let j = null; try { j = txt ? JSON.parse(txt) : null; } catch {}
+              if (!r.ok) throw new Error((j && (j.error || j.details)) || `HTTP ${r.status} ${txt.slice(0,160)}`);
+              return j || {};
+            });
+
+            for (const sel of selections) {
+              const actionsResp = await postJSON('/api/ifs/command_actions', {
+                role, projection, command: sel.command, client: sel.client || 'web'
+              });
+
+              const scopeSet = new Set(
+                (sel.scope || '')
+                  .split(',')
+                  .map(s => s.trim())
+                  .filter(Boolean)
+              );
+
+              // Only keep actions within this card’s entity scope
+              const actions = (actionsResp.actions || [])
+                .map(a => {
+                  const entity = String(a.EntityName || a.ProjectionName || projection || '(Projection)').trim();
+                  const action = String(a.ActionName || a.Action || '').trim();
+                  return { entity, action };
+                })
+                .filter(x => x.action && (scopeSet.size === 0 || scopeSet.has(x.entity)));
+
+              if (!actions.length) continue;
+
+              for (const act of actions) {
+                await postJSON('/api/ifs/entity_action_grant', {
+                  op: 'grant', role, projection, entity: act.entity, action: act.action
+                });
+
+                // === NEW: reflect success in the UI immediately ===
+                try {
+                  // Safe escaper if CSS.escape is unavailable in the runtime
+                  const esc = (s) => (window.CSS && typeof CSS.escape === 'function')
+                    ? CSS.escape(String(s))
+                    : String(s).replace(/["\\]/g, '\\$&');
+
+                  // There can be multiple matching rows (e.g. duplicated in different sections)
+                  const rowSelector =
+                    `tr[data-kind="eag"][data-entity="${esc(act.entity)}"][data-action="${esc(act.action)}"]`;
+                  const rows = paneEl.querySelectorAll(rowSelector);
+
+                  rows.forEach(row => {
+                    const cb = row.querySelector('input[type="checkbox"][data-grant-toggle="1"]')
+                              || row.querySelector('input[type="checkbox"][data-grant]'); // fallback if DOM uses data-grant
+                    if (cb && !cb.checked) {
+                      const was = cb.checked;
+                      cb.checked = true;
+
+                      // Fire events so the rest of the UI (badges, header toggles) updates
+                      cb.dispatchEvent(new Event('input',  { bubbles: true }));
+                      cb.dispatchEvent(new Event('change', { bubbles: true }));
+
+                      // Update the per-row badge if present
+                      const badgeCell = row.querySelector('[data-badge="1"]');
+                      if (badgeCell && typeof badgeGranted === 'function') {
+                        badgeCell.innerHTML = badgeGranted(true);
+                      }
+
+                      // Also sync the originals map so Save doesn’t think there’s a new diff
+                      const st = (typeof paneState !== 'undefined' && paneState?.get) ? paneState.get(paneEl) : null;
+                      if (st && st.originals && typeof st.originals.set === 'function') {
+                        st.originals.set(`${act.entity}:::${act.action}`, true);
+                      }
+
+                      // Optional: if a parent section header shows an aggregate badge/checkbox,
+                      // many parts of your UI recalc on change—but if not, you can manually trigger:
+                      // (We rely on the dispatched events above to keep this minimal and consistent.)
+                    }
+                  });
+                } catch (e) {
+                  console.warn('Post-grant UI sync failed:', e);
+                }
+                // === END NEW ===
+              }
+            }
+          }
+
+          // --- Wire "View actions" for the grouped EAG accordions ---
+          function wireViewActions(root){
+            if (!root) return;
+
+            // Delegate clicks on "View actions"
+            root.addEventListener('click', (e) => {
+              const btn = e.target.closest('[data-actions-btn="1"]');
+              if (!btn) return;
+
+              const code   = btn.getAttribute('data-code');
+              const label  = btn.getAttribute('data-label') || code;
+              const proj   = btn.getAttribute('data-projection') || '';
+              const safeRowKey = `${proj}:${code}`.replace(/[^a-zA-Z0-9:_-]/g, '_');
+
+              // Find the paired <tr class="collapse" id="actions-...">
+              const table = btn.closest('table');
+              const detailRow = table && table.querySelector(`#actions-${CSS.escape(safeRowKey)}`);
+              if (!detailRow) return;
+
+              const isOpen = detailRow.classList.contains('show');
+              // Toggle
+              if (isOpen) {
+                detailRow.classList.remove('show');
+                btn.setAttribute('aria-expanded','false');
+                return;
+              }
+              // Close any other open action rows within this table
+              table.querySelectorAll('tr.collapse.show').forEach(r => r.classList.remove('show'));
+              detailRow.classList.add('show');
+              btn.setAttribute('aria-expanded','true');
+
+              // Build the child panel shell + loading row
+              const host = detailRow.querySelector('td > div[data-cmd-detail], td > div') || detailRow.querySelector('td > div');
+              if (!host) return;
+
+              const panelId = `act-${safeRowKey}`;
+              host.innerHTML = `
+                <div id="${panelId}" class="actions-panel">
+                  <div class="actions-header d-flex justify-content-between align-items-center">
+                    <div>Actions for: <strong>${label}</strong></div>
+                    <label class="form-check mb-0" title="Grant/Revoke all actions for this command">
+                      <input type="checkbox"
+                            class="form-check-input"
+                            data-command-check="1"
+                            data-key="${safeRowKey}"
+                            data-projection="${proj}"
+                            data-command="${code}">
+                      <span class="ms-2">Select all</span>
+                    </label>
+                  </div>
+                  <div class="p-0">
+                    <ul class="list-group list-group-flush actions-list" data-actions-ul="1">
+                      <li class="list-group-item py-2">
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Loading…
+                      </li>
+                    </ul>
+                  </div>
+                </div>`;
+
+              // Fetch & render per command (cached)
+              (async () => {
+                const ul = host.querySelector('[data-actions-ul="1"]');
+                const roleEff = (typeof computeEffectiveRole === 'function') ? computeEffectiveRole() : '';
+                const cacheK = actionCacheKey(roleEff, proj, code);
+                let actions = COMMAND_ACTIONS_PREVIEW_CACHE.get(cacheK);
+
+                try {
+                  if (!actions) {
+                    const res = await fetch('/api/ifs/command_actions', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                      body: JSON.stringify({ role: roleEff, projection: proj, command: code, client: btn.getAttribute('data-client') || 'web' })
+                    });
+                    const j = await res.json();
+                    if (!res.ok || !j || !Array.isArray(j.actions)) {
+                      throw new Error((j && (j.details || j.error || j.message)) || `HTTP ${res.status}`);
+                    }
+                    actions = j.actions;
+                    COMMAND_ACTIONS_PREVIEW_CACHE.set(cacheK, actions);
+                  }
+
+                  // Render list with checkboxes + badges
+                  ul.innerHTML = actions.length
+                    ? actions.map(a => {
+                        const entity  = a.EntityName || a.Entity || '';
+                        const action  = a.ActionName || a.Action || '';
+                        const granted = (a.CurrentlyGranted === true) ||
+                                        (a.CurrentlyGranted === 1) ||
+                                        (String(a.CurrentlyGranted).toLowerCase() === 'true');
+                        return `
+                          <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                            <div class="d-flex align-items-start">
+                              <label class="form-check">
+                                <input type="checkbox"
+                                      class="form-check-input mt-1"
+                                      data-action-check="1"
+                                      data-key="${safeRowKey}"
+                                      data-projection="${proj}"
+                                      data-command="${code}"
+                                      data-entity="${entity}"
+                                      data-action="${action}"
+                                      ${granted ? 'checked' : ''}>
+                                <span>
+                                  <div class="fw-semibold">${entity}</div>
+                                  <div class="small text-muted">${action}</div>
+                                </span>
+                              </label>
+                            </div>
+                            <span class="badge ${granted ? 'bg-success' : 'bg-secondary'}" data-grant-badge="1">
+                              ${granted ? 'Granted' : 'Not granted'}
+                            </span>
+                          </li>`;
+                      }).join('')
+                    : `<li class="list-group-item py-2 text-muted small">No actions found for this command.</li>`;
+
+                  // After first render, sync parent checkbox state
+                  syncParentCheckboxState(safeRowKey, host);
+
+                } catch (err) {
+                  ul.innerHTML = `<li class="list-group-item py-2 text-danger small">Failed to load actions: ${err.message}</li>`;
+                }
+              })();
+
+              // === Local helpers + handlers (scoped to this root) ===
+              function getChildChecks(key, scope){
+                const row = document.getElementById(`actions-${key}`);
+                const container = scope || row;
+                return container ? Array.from(container.querySelectorAll('input[data-action-check="1"][data-key="'+key+'"]')) : [];
+              }
+              function setBadgeForCheck(chk, granted){
+                const li = chk.closest('li');
+                const badge = li && li.querySelector('[data-grant-badge="1"]');
+                if (!badge) return;
+                badge.classList.toggle('bg-success', granted);
+                badge.classList.toggle('bg-secondary', !granted);
+                badge.textContent = granted ? 'Granted' : 'Not granted';
+              }
+              function syncParentCheckboxState(key, scope){
+                const parent = (scope||host).querySelector('input[data-command-check="1"][data-key="'+key+'"]');
+                if (!parent) return;
+                const kids = getChildChecks(key, scope||host);
+                if (!kids.length){
+                  parent.checked = false;
+                  parent.indeterminate = false;
+                  return;
+                }
+                const checkedCount = kids.filter(k => k.checked).length;
+                parent.checked = checkedCount === kids.length;
+                parent.indeterminate = checkedCount > 0 && checkedCount < kids.length;
+              }
+
+              // Child checkbox toggles: update badge + parent state
+              if (!host.dataset.wiredChild) {
+                host.dataset.wiredChild = '1';
+                host.addEventListener('change', (e) => {
+                  const chk = e.target.closest('input[data-action-check="1"]');
+                  if (!chk) return;
+                  const granted = !!chk.checked;
+                  setBadgeForCheck(chk, granted);
+                  syncParentCheckboxState(chk.dataset.key, host);
+
+                  // TODO: persist immediately if desired (call your grant/revoke API here)
+                  // e.g. POST /api/ifs/entity_action_grant with { op: granted ? 'grant' : 'revoke', role, projection: chk.dataset.projection, entity: chk.dataset.entity, action: chk.dataset.action }
+                });
+              }
+
+              // Parent checkbox toggles: select all children + badges
+              if (!host.dataset.wiredParent) {
+                host.dataset.wiredParent = '1';
+                host.addEventListener('change', (e) => {
+                  const parent = e.target.closest('input[data-command-check="1"]');
+                  if (!parent) return;
+                  const key = parent.dataset.key;
+                  const kids = getChildChecks(key, host);
+                  const grantAll = !!parent.checked;
+
+                  kids.forEach(chk => {
+                    chk.checked = grantAll;
+                    setBadgeForCheck(chk, grantAll);
+                    // TODO: persist each change if you want immediate server sync
+                  });
+
+                  parent.indeterminate = false;
+                });
+              }
+            });
+          }
+
+          // Apply to both grouped accordions
+          wireViewActions(accEntities);
+          wireViewActions(accVirtuals);
+
+          // Save (affects only EAG checkboxes; now also resolves checked commands to actions first)
+          pane.querySelector('[data-save="1"]').addEventListener('click', async (ev) => {
+            const btn = ev.currentTarget;
+            beginSyncUI(pane, { label: 'Saving…', status: 'Do not close — syncing changes with IFS…' });
+            try {
+              await grantCommandsInPane(pane);
+              await persistActionCheckboxesInPane(pane);
+              await savePaneChanges(pane, btn);
+
+              // ✅ clear spinner before any hydration that may replace DOM
+              showFlash('success', 'Saved successfully.');
+              endSyncUI(pane, true);
+
+              // Then refresh command badges
+              const projection = pane.closest('tr').previousElementSibling
+                .querySelector('.proj-title .fw-semibold').textContent.trim();
+              await refreshCommandBadgesForProjection(projection);
+            } catch (err) {
+              showFlash('danger', 'Save failed: ' + err.message);
+              endSyncUI(pane, false);
+            }
+          });
+
+
+          try { await hydrateGroupedCommandBadges(pane); } catch (_) {}
+        }
+
+        // =================== FIXED BRANCHING + LOADERS ===================
+        try {
+          const isEag = targetSel.includes('pane-eag-');
+          const isPag = targetSel.includes('pane-pag-');
+
+          if (!(isEag || isPag)) return;
+
+          if (isEag) {
+            showPaneLoading(pane, 'Loading entity action grants…');
+
+            const rEag = await fetch(
+              `/api/ifs/entity_action_grants_grouped?role=${encodeURIComponent(roleEff)}&projection=${encodeURIComponent(projection)}`
+            );
+            const rawEag = await rEag.text();
+            let jEag = null;
+            try { jEag = JSON.parse(rawEag); } catch {}
+            if (!rEag.ok || !jEag || !jEag.ok) {
+              const serverMsg = jEag && (jEag.details || jEag.error || jEag.message || '');
+              throw new Error(serverMsg || ('HTTP ' + rEag.status));
+            }
+            const groups = jEag.groups || [];
+            await renderGroupedEagAccordion(pane, groups);
+            return;
+          }
+
+          if (isPag) {
+            showPaneLoading(pane, 'Loading projection action grants…');
+
+            const url = `/api/ifs/projection_action_grants?role=${encodeURIComponent(roleEff)}&projection=${encodeURIComponent(projection)}`;
+            const r = await fetch(url);
+            const j = await r.json();
+            if (!r.ok || !j) {
+              const serverMsg = j && (j.details || j.error || j.message || '');
+              throw new Error(serverMsg || ('HTTP ' + r.status));
+            }
+            const rows = (j && j.value) || [];
+            const norm = rows.map(x => ({
+              Action:  x.Action || x.ACTION || x.ActionName || '',
+              Granted: (x.CurrentlyGranted ?? x.Granted ?? x.Grant ?? x.IsGranted ?? false)
+            }));
+            renderBootstrapTable(pane, norm, ['Action','Grant'], false);
+            return;
+          }
+
+        } catch (err) {
+          pane.innerHTML = `<div class="text-danger small">Failed to load: ${err.message}</div>`;
+        }
+        // =================== /FIXED BRANCHING + LOADERS ===================
+      });
+    });
+
+
+  async function renderEntityVirtualAccordion(pane, groups, extras = {}) {
+    const { commands = [], projection = '', role = '' } = extras;
+
+    // Toolbar
+    pane.innerHTML = `
+      <div class="tab-toolbar">
+        <div class="input-group input-group-sm" style="max-width:360px">
+          <span class="input-group-text">Search</span>
+          <input class="form-control" type="search" placeholder="Filter entity/action…" data-search-accordion="1">
+        </div>
+        <div class="ms-auto d-flex align-items-center gap-2">
+          <button class="btn btn-sm btn-primary" type="button" data-save="1" data-save-btn="1">Save</button>
+        </div>
+      </div>
+      <div class="vstack gap-3" id="eag-accordion-host"></div>
+    `;
+
+    const host = pane.querySelector('#eag-accordion-host');
+    const isVirtual = (g) => /Virtuals?/i.test(g.entity || '');
+    const entities  = groups.filter(g => !isVirtual(g));
+    const virtuals  = groups.filter(g =>  isVirtual(g));
+
+    const badgeGranted = (on) =>
+      on ? '<span class="badge bg-success">Granted</span>'
+        : '<span class="badge bg-secondary">Not granted</span>';
+
+    // ---------- helpers ----------
+    const rawEntities = [];
+    groups.forEach(g => String(g.entity || '').split(',').forEach(x => x && rawEntities.push(x.trim())));
+    const unique = arr => Array.from(new Set(arr));
+    const canonicalEntities  = unique(rawEntities);
+    const canonicalNoVirtual = unique(rawEntities.map(e => e.endsWith('Virtual') ? e.slice(0, -7) : e));
+    const norm = s => (s || '').replace(/[^a-z0-9]+/gi, '').toLowerCase();
+
+    function entityForCommand(cmd) {
+      const label = cmd.label || '';
+      const code  = cmd.command || '';
+      const left = label.split(' / ')[0]?.trim();
+      if (left) {
+        const nLeft = norm(left);
+        let hit = canonicalEntities.find(e => norm(e) === nLeft);
+        if (hit) return hit;
+        hit = canonicalNoVirtual.find(e => norm(e) === nLeft);
+        if (hit) return (rawEntities.find(r => r.replace(/Virtual$/, '') === hit) || hit);
+      }
+      const tryList = [label, code].map(norm);
+      let hit = canonicalEntities.find(e => tryList.includes(norm(e)));
+      if (hit) return hit;
+      hit = canonicalNoVirtual.find(e => tryList.includes(norm(e)));
+      if (hit) return (rawEntities.find(r => r.replace(/Virtual$/, '') === hit) || hit);
+      return '';
+    }
+
+    // Commands grouped by entity
+    const commandsByEntity = new Map();
+    (commands || []).forEach(c => {
+      const owner = entityForCommand(c);
+      if (!owner) return;
+      String(owner).split(',').forEach(ent => {
+        const k = ent.trim();
+        if (!k) return;
+        const arr = commandsByEntity.get(k) || [];
+        arr.push(c);
+        commandsByEntity.set(k, arr);
+      });
+    });
+
+    const makeRows = (items) => {
+      if (!items || !items.length) return '<div class="text-muted small">None</div>';
+      const rows = items.map(it => {
+        const entity  = it.entity || '';
+        const action  = it.action || '';
+        const granted = !!it.granted;
+        return `
+          <tr data-kind="eag" data-entity="${entity}" data-action="${action}">
+            <td>
+              <div class="form-check m-0">
+                <input class="form-check-input" type="checkbox" ${granted ? 'checked' : ''} data-grant-toggle="1">
+              </div>
+            </td>
+            <td class="text-nowrap">${entity}</td>
+            <td class="text-nowrap">${action}</td>
+            <td data-badge="1">${badgeGranted(granted)}</td>
+          </tr>`;
+      }).join('');
+      return `
+        <div class="table-responsive">
+          <table class="table table-hover table-sm align-middle mb-0">
+            <thead class="table-light"><tr>
+              <th style="width:44px"></th>
+              <th>Entity</th><th>Action</th><th>Grant</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    };
+
+    // Collapsible subsection
+    function section(title, innerHTML, parentKey, idx) {
+      const sid = `${parentKey}-sec-${idx}`;
+      return `
+        <div class="border-top">
+          <button type="button"
+                  class="btn btn-link text-decoration-none px-3 py-2 d-flex w-100 align-items-center justify-content-between"
+                  data-bs-toggle="collapse" data-bs-target="#${sid}" aria-expanded="false" aria-controls="${sid}">
+            <span class="fw-semibold">${title}</span>
+            <i class="bi bi-chevron-down"></i>
+          </button>
+          <div id="${sid}" class="collapse">${innerHTML}</div>
+        </div>`;
+    }
+
+    // Commands subsection (per entity)
+    function commandsSectionFor(entityKey, parentKey, idx) {
+      const list = commandsByEntity.get(entityKey) || [];
+      const sid  = `${parentKey}-cmds-${idx}`;
+
+      if (!list.length) {
+        return section(`Commands (0)`,
+          `<div class="p-3 text-muted small">No commands mapped for this entity.</div>`,
+          parentKey, idx);
+      }
+
+      const rows = list.map(c => {
+        const code   = c.command || c.code;
+        const label  = c.label || code;
+        const proj   = projection;
+        const client = c.client || 'web';
+        const safeRowKey = `${proj}:${code}`.replace(/[^a-zA-Z0-9:_-]/g, '_');
+
+
+        return `
+          <tr>
+            <td style="width:44px"></td>
+            <td class="text-nowrap">${label}<div class="text-muted small">${code}</div></td>
+            <td class="text-nowrap text-end">
+              <button type="button"
+                      class="btn btn-sm btn-outline-primary"
+                      data-actions-btn="1"
+                      data-code="${code}"
+                      data-label="${label}"
+                      data-projection="${proj}"
+                      data-client="${client}"
+                      aria-expanded="false"
+                      aria-controls="actions-${safeRowKey}">
+                Actions
+              </button>
+            </td>
+          </tr>
+          <tr class="collapse" id="actions-${safeRowKey}">
+            <td colspan="3">
+              <div class="p-2 border-start border-end" data-cmd-detail="1">
+                <table class="table table-sm table-hover mb-0" data-actions-list="1">
+                  <thead>
+                    <tr>
+                      <th>Entity</th>
+                      <th>Action</th>
+                      <th class="text-end">Granted</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td colspan="3" class="small text-muted">Loading actions…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+
+      const table = `
+        <div class="table-responsive">
+          <table class="table table-hover table-sm align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="width:44px"></th>
+                <th>Command</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+
+      return section(`Commands (${list.length})`, table, parentKey, idx);
+    }
+    // Build one card (line)
+    function renderCard(g) {
+      const titleText = g.title || g.friendly || g.entity;
+      const subtitle  = (titleText !== g.entity)
+        ? `${titleText} <span class="text-muted">(${g.entity})</span>`
+        : titleText;
+
+      const allItems = []
+        .concat(g.status_changes || [], g.crud || [], g.cleanup || [], g.other || []);
+      const grantedCount = allItems.filter(x => !!x.granted).length;
+      const allCount     = allItems.length;
+
+      const key = `grp-${CSS.escape(g.entity)}`;
+      const bodyId = `${key}-body`;
+
+      const card = document.createElement('div');
+      card.className = 'card shadow-sm';
+      card.dataset.entityScope = g.entity;
+
+      card.innerHTML = `
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-2 flex-grow-1">
+            <div class="form-check m-0">
+              <input class="form-check-input" type="checkbox" ${allCount && grantedCount===allCount ? 'checked' : ''} data-section-toggle="1">
+            </div>
+            <button type="button" class="btn btn-link text-decoration-none text-start flex-grow-1"
+                    data-bs-toggle="collapse" data-bs-target="#${bodyId}" aria-expanded="false" aria-controls="${bodyId}">
+              <span class="fw-semibold">${subtitle}</span>
+            </button>
+          </div>
+          <div>
+            <button type="button" class="btn btn-sm btn-outline-primary" data-grant-section="1">Grant</button>
+          </div>
+        </div>
+        <div id="${bodyId}" class="collapse">
+          ${ section(`CRUD (${g.crud?.length || 0})`,           makeRows(g.crud || []),           key, 1) }
+          ${ section(`Status change (${g.status_changes?.length || 0})`, makeRows(g.status_changes || []), key, 2) }
+          ${ section(`Cleanup (${g.cleanup?.length || 0})`,     makeRows(g.cleanup || []),        key, 3) }
+          ${ section(`Other (${g.other?.length || 0})`,         makeRows(g.other || []),          key, 4) }
+          ${ commandsSectionFor(g.entity, key, 5) }
+        </div>
+      `;
+
+      // master checkbox
+      const headerCb = card.querySelector('[data-section-toggle="1"]');
+      headerCb?.addEventListener('change', () => {
+        // enter bulk mode to avoid per-child resync thrash
+        card.dataset.bulk = '1';
+        const kids = card.querySelectorAll('tbody input[type="checkbox"][data-grant-toggle="1"]');
+        kids.forEach(cb => {
+          if (cb.checked !== headerCb.checked) {
+            cb.checked = headerCb.checked;
+            // keep existing UI glue (badges, etc.) in sync
+            cb.dispatchEvent(new Event('input',  { bubbles: true }));
+            cb.dispatchEvent(new Event('change', { bubbles: true }));
+          } else {
+            // still update the badge for rows that were already in this state
+            const badgeCell = cb.closest('tr')?.querySelector('[data-badge="1"]');
+            if (badgeCell) badgeCell.innerHTML = badgeGranted(cb.checked);
+          }
+        });
+        // recompute header state once, after bulk toggle
+        const total = kids.length;
+        const on    = Array.from(kids).filter(k => k.checked).length;
+        headerCb.indeterminate = on > 0 && on < total;
+        headerCb.checked       = total > 0 && on === total;
+        delete card.dataset.bulk;
+      });
+      // children update header (indeterminate)
+      card.addEventListener('change', (ev) => {
+        // ignore child change propagation during bulk toggles
+        if (card.dataset.bulk === '1') return;
+        const rowCb = ev.target.closest('[data-grant-toggle="1"]');
+        if (!rowCb) return;
+        const badgeCell = rowCb.closest('tr')?.querySelector('[data-badge="1"]');
+        if (badgeCell) badgeCell.innerHTML = badgeGranted(rowCb.checked);
+
+        const allCbs = card.querySelectorAll('tbody input[type="checkbox"][data-grant-toggle="1"]');
+        const total  = allCbs.length;
+        const on     = Array.from(allCbs).filter(cb => cb.checked).length;
+        if (headerCb) {
+          headerCb.indeterminate = on > 0 && on < total;
+          headerCb.checked = on === total;
+        }
+      });
+
+      // "Grant" button (placeholder)
+      card.querySelector('[data-grant-section="1"]')?.addEventListener('click', () => {
+        showFlash('info', 'Grant (section) isn’t wired yet.');
+      });
+
+      // Wire "View actions" (per-command) inside this card — LIVE PER-COMMAND LIST
+      card.addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-actions-btn="1"]');
+        if (!btn) return;
+
+        const code   = btn.getAttribute('data-code');
+        const label  = btn.getAttribute('data-label') || code;
+        const proj   = btn.getAttribute('data-projection');
+
+        // row id is actions-<safeRowKey>
+        const safeRowKey = `${proj}:${code}`.replace(/[^a-zA-Z0-9:_-]/g, '_');
+        const detailRow  = card.querySelector(`#actions-${CSS.escape(safeRowKey)}`) ||
+                          document.getElementById(`actions-${safeRowKey}`);
+        if (!detailRow) return;
+
+        // toggle open/close
+        const isOpen = detailRow.classList.contains('show');
+        if (isOpen) {
+          detailRow.classList.remove('show');
+          btn.setAttribute('aria-expanded', 'false');
+          return;
+        }
+        // close others in this card, open this one
+        card.querySelectorAll('tr.collapse.show').forEach(r => r.classList.remove('show'));
+        btn.setAttribute('aria-expanded', 'true');
+        detailRow.classList.add('show');
+
+        // host to render into
+        const host = detailRow.querySelector('td > div[data-cmd-detail], td > div') || detailRow.querySelector('td > div');
+        if (!host) return;
+
+        // Child panel shell (light gray + indented) + loading row
+        const panelId = `act-${safeRowKey}`;
+        host.innerHTML = `
+          <div id="${panelId}" class="actions-panel"
+              style="background:#f6f7f9;margin-left:24px;border:1px solid #e6e8ec;border-radius:8px;">
+            <div class="actions-header d-flex justify-content-between align-items-center"
+                style="background:#eef2f7;border-bottom:1px solid #e6e8ec;padding:.5rem .75rem;border-top-left-radius:8px;border-top-right-radius:8px;">
+              <div>Actions for: <strong>${label}</strong></div>
+              <label class="form-check mb-0" title="Grant/Revoke all actions for this command">
+                <input type="checkbox"
+                      class="form-check-input"
+                      data-command-check="1"
+                      data-key="${safeRowKey}"
+                      data-projection="${proj}"
+                      data-command="${code}">
+                <span class="ms-2">Select all</span>
+              </label>
+            </div>
+            <div class="p-0">
+              <ul class="list-group list-group-flush actions-list" data-actions-ul="1">
+                <li class="list-group-item py-2">
+                  <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                  Loading…
+                </li>
+              </ul>
+            </div>
+          </div>`;
+
+        // Fetch & render per command (cached)
+        try {
+          const ul = host.querySelector('[data-actions-ul="1"]');
+          const roleEff = (typeof computeEffectiveRole === 'function') ? computeEffectiveRole() : '';
+          const cacheK = actionCacheKey(roleEff, proj, code);
+          let actions = COMMAND_ACTIONS_PREVIEW_CACHE.get(cacheK);
+
+          if (!actions) {
+            const res = await fetch('/api/ifs/command_actions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+              body: JSON.stringify({ role: roleEff, projection: proj, command: code, client: btn.getAttribute('data-client') || 'web' })
+            });
+            const j = await res.json();
+            if (!res.ok || !j || !Array.isArray(j.actions)) {
+              throw new Error((j && (j.details || j.error || j.message)) || `HTTP ${res.status}`);
+            }
+            actions = j.actions;
+            COMMAND_ACTIONS_PREVIEW_CACHE.set(cacheK, actions);
+          }
+
+          // Render list with checkboxes + badges
+          ul.innerHTML = actions.length
+            ? actions.map(a => {
+                const entity  = a.EntityName || a.Entity || '';
+                const action  = a.ActionName || a.Action || '';
+                const granted = (a.CurrentlyGranted === true) ||
+                                (a.CurrentlyGranted === 1) ||
+                                (String(a.CurrentlyGranted).toLowerCase() === 'true');
+                return `
+                  <li class="list-group-item d-flex justify-content-between align-items-center py-2"
+                      style="border:0;border-bottom:1px solid #eceff3;">
+                    <div class="d-flex align-items-start">
+                      <label class="form-check" style="display:flex;align-items:center;gap:.5rem;margin:0;">
+                        <input type="checkbox"
+                              class="form-check-input mt-1"
+                              data-action-check="1"
+                              data-key="${safeRowKey}"
+                              data-projection="${proj}"
+                              data-command="${code}"
+                              data-entity="${entity}"
+                              data-action="${action}"
+                              ${granted ? 'checked' : ''}>
+                        <span>
+                          <div class="fw-semibold">${entity}</div>
+                          <div class="small text-muted">${action}</div>
+                        </span>
+                      </label>
+                    </div>
+                    <span class="badge ${granted ? 'bg-success' : 'bg-secondary'}" data-grant-badge="1">
+                      ${granted ? 'Granted' : 'Not granted'}
+                    </span>
+                  </li>`;
+              }).join('')
+            : `<li class="list-group-item py-2 text-muted">No actions found for this command.</li>`;
+
+          // After rendering, set parent checkbox state (checked / indeterminate) based on children
+          syncParentCheckboxStateLocal(safeRowKey, host);
+
+        } catch (err) {
+          const ul = host.querySelector('[data-actions-ul="1"]');
+          if (ul) ul.innerHTML = `<li class="list-group-item py-2 text-danger small">Failed to load actions: ${err.message}</li>`;
+        }
+
+        // ===== handlers & helpers (scoped to this panel) =====
+        function getChildChecksLocal(key, scope){
+          const row = document.getElementById(`actions-${key}`);
+          const container = scope || row;
+          return container ? Array.from(container.querySelectorAll('input[data-action-check="1"][data-key="'+key+'"]')) : [];
+        }
+        function setBadgeForCheckLocal(chk, granted){
+          const li = chk.closest('li');
+          const badge = li && li.querySelector('[data-grant-badge="1"]');
+          if (!badge) return;
+          badge.classList.toggle('bg-success', granted);
+          badge.classList.toggle('bg-secondary', !granted);
+          badge.textContent = granted ? 'Granted' : 'Not granted';
+        }
+        function syncParentCheckboxStateLocal(key, scope){
+          const parent = (scope||host).querySelector('input[data-command-check="1"][data-key="'+key+'"]');
+          if (!parent) return;
+          const kids = getChildChecksLocal(key, scope||host);
+          if (!kids.length){
+            parent.checked = false;
+            parent.indeterminate = false;
+            return;
+          }
+          const checkedCount = kids.filter(k => k.checked).length;
+          parent.checked = checkedCount === kids.length;
+          parent.indeterminate = checkedCount > 0 && checkedCount < kids.length;
+        }
+
+        // Child checkbox -> update its badge + parent state
+        if (!host.dataset.wiredChild) {
+          host.dataset.wiredChild = '1';
+          host.addEventListener('change', (e) => {
+            const chk = e.target.closest('input[data-action-check="1"]');
+            if (!chk) return;
+            const granted = !!chk.checked;
+            setBadgeForCheckLocal(chk, granted);
+            syncParentCheckboxStateLocal(chk.dataset.key, host);
+
+            // TODO: add your persist call here if needed
+            // grantAction({ projection: chk.dataset.projection, command: chk.dataset.command, entity: chk.dataset.entity, action: chk.dataset.action, grant: granted })
+          });
+        }
+
+        // Parent checkbox -> toggle all children
+        if (!host.dataset.wiredParent) {
+          host.dataset.wiredParent = '1';
+          host.addEventListener('change', (e) => {
+            const parent = e.target.closest('input[data-command-check="1"]');
+            if (!parent) return;
+            const key = parent.dataset.key;
+            const kids = getChildChecksLocal(key, host);
+            const grantAll = !!parent.checked;
+
+            kids.forEach(chk => {
+              chk.checked = grantAll;
+              setBadgeForCheckLocal(chk, grantAll);
+              // TODO: persist each change here if you want immediate server sync
+            });
+
+            parent.indeterminate = false;
+          });
+        }
+      });
+
+      return card;
+    }
+
+    // Render block (Entities first, then Virtuals)
+    function renderBlock(title, list) {
+      if (!list.length) return '';
+      const wrap = document.createElement('div');
+      wrap.className = 'card border-0';
+      wrap.innerHTML = `
+        <div class="card-header bg-body-tertiary fw-semibold">${title}</div>
+        <div class="card-body p-0">
+          <div class="vstack gap-2 p-2"></div>
+        </div>`;
+      const stack = wrap.querySelector('.vstack');
+      list.forEach(g => stack.appendChild(renderCard(g)));
+      return wrap.outerHTML;
+    }
+
+    host.innerHTML = [
+      renderBlock('Entities', entities),
+      renderBlock('Virtuals', virtuals),
+    ].join('');
+
+    // Search
+    const search = pane.querySelector('[data-search-accordion="1"]');
+    search?.addEventListener('input', () => {
+      const q = (search.value || '').toLowerCase();
+      pane.querySelectorAll('.card.shadow-sm').forEach(card => {
+        const txt = card.textContent || '';
+        card.style.display = txt.toLowerCase().includes(q) ? '' : 'none';
+      });
+    });
+
+    // Originals map for Save (checkbox rows only)
+    const originals = new Map();
+    host.querySelectorAll('tbody tr').forEach(tr => {
+      const cb = tr.querySelector('input[type="checkbox"][data-grant-toggle="1"]');
+      if (!cb) return;
+      const entity = tr.dataset.entity || '';
+      const action = tr.dataset.action || '';
+      originals.set(`${entity}:::${action}`, cb.checked);
+    });
+    paneState.set(pane, { kind: 'eag', originals });
+
+    // Save button (reuses your existing save flow)
+    pane.querySelector('[data-save="1"]').addEventListener('click', async (ev) => {
+      const btn = ev.currentTarget;
+      beginSyncUI(pane, { label: 'Saving…', status: 'Do not close — syncing changes with IFS…' });
+      try {
+        await savePaneChanges(pane, btn);
+        await persistActionCheckboxesInPane(pane);
+
+        // ✅ end the saving state first
+        showFlash('success', 'Saved successfully.');
+        endSyncUI(pane, true);
+
+        // Then re-fetch & re-render
+        const roleEff = role || computeEffectiveRole();
+        const projection = pane.closest('tr').previousElementSibling
+                          .querySelector('.proj-title .fw-semibold').textContent.trim();
+        const rEag = await fetch(`/api/ifs/entity_action_grants_grouped?role=${encodeURIComponent(roleEff)}&projection=${encodeURIComponent(projection)}`);
+        const jEag = await rEag.json();
+        await renderGroupedEagAccordion(pane, jEag.groups || []);
+      } catch (err) {
+        showFlash('danger', 'Save failed: ' + err.message);
+        endSyncUI(pane, false);
+      }
+    });
+
+  }
+
+
+  async function savePaneChanges(pane, btn) {
+    const role = computeEffectiveRole();
+    const projection = pane.closest('tr').previousElementSibling
+                        .querySelector('.proj-title .fw-semibold').textContent.trim();
+    if (!role || !projection) throw new Error('Missing role or projection.');
+
+    const state = paneState.get(pane);
+    if (!state) return;
+
+    const grants = [];
+    const revokes = [];
+
+    pane.querySelectorAll('tbody tr').forEach(tr => {
+      const kind   = tr.dataset.kind;
+      const entity = tr.dataset.entity || '';
+      const action = tr.dataset.action || '';
+      const key    = (kind === 'eag') ? `${entity}:::${action}` : action;
+      const was    = !!state.originals.get(key);
+
+      const cb = tr.querySelector('[data-grant-toggle="1"]');
+      const now = cb ? !!cb.checked : was; // null-safe
+
+      if (now !== was) {
+        if (now) grants.push({ kind, entity, action });
+        else     revokes.push({ kind, entity, action });
+      }
+    });
+
+    if (!grants.length && !revokes.length) return;
+
+    const oldHTML = btn.innerHTML;
+    btn.disabled = true;
+    btn.classList.add('saving');
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving…`;
+
+    const postJSON = (url, body) =>
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(body)
+      }).then(async r => {
+        if (!r.ok) {
+          const t = await r.text().catch(()=> '');
+          throw new Error(`HTTP ${r.status} ${t.slice(0,160)}`);
+        }
+        return r.json().catch(()=> ({}));
+      });
+
+    const tasks = [];
+    // GRANTS
+    grants.forEach(({kind, entity, action}) => {
+      if (kind === 'eag') {
+        tasks.push(postJSON(URL_EAG, { op:'grant', role, projection, entity, action }));
+      } else {
+        // GUARD: only send PAG if action is non-empty
+        if (action && action.trim()) {
+          tasks.push(postJSON(URL_PAG, { op:'grant', role, projection, action }));
+        }
+      }
+    });
+    // REVOKES
+    revokes.forEach(({kind, entity, action}) => {
+      if (kind === 'eag') {
+        tasks.push(postJSON(URL_EAG, { op:'revoke', role, projection, entity, action }));
+      } else {
+        // GUARD: only send PAG if action is non-empty
+        if (action && action.trim()) {
+          tasks.push(postJSON(URL_PAG, { op:'revoke', role, projection, action }));
+        }
+      }
+    });
+
+    try {
+      await Promise.all(tasks);
+      // NEW: if anything was actually changed, flip the line status to "Custom"
+      if (grants.length || revokes.length) {
+        markProjectionAsCustom(projection);
+      }
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('saving');
+      btn.innerHTML = oldHTML;
+    }
+
+  }
+
+  // ===== Submit handler (unchanged) =====
+  els.form.addEventListener('submit', (e) => {
+    const visualSelect = document.getElementById('existing_role_display');
+    if (visualSelect && !visualSelect.disabled) {
+      visualSelect.disabled = true;
+      if (visualSelect.name) visualSelect.removeAttribute('name');
+      if (visualSelect.id) visualSelect.id = '';
+      if (visualSelect) visualSelect.name = 'existing_role_visual';
+
+      let modeHidden = document.getElementById('mode_hidden_update');
+      if (!modeHidden) {
+        modeHidden = document.createElement('input');
+        modeHidden.type = 'hidden';
+        modeHidden.id = 'mode_hidden_update';
+        modeHidden.name = 'mode';
+        els.form.appendChild(modeHidden);
+      }
+      modeHidden.value = 'update';
+    }
+
+    const btn = document.getElementById('btnProceed') || els.form.querySelector('button[type="submit"]');
+    if (btn && btn.dataset.loading !== '1') {
+      btn.dataset.loading = '1';
+      btn.disabled = true;
+      btn.innerHTML =
+        '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>' +
+        'Processing...';
+    }
+  });
+
+  // ===== Create-first flow (unchanged) =====
+  let createdRoleName = null;
+  const btnCreateOnly = document.getElementById('btnCreateOnly');
+  const btnProceed    = document.getElementById('btnProceed');
+  const summaryLock   = document.getElementById('summaryLock');
+
+  if (btnCreateOnly) {
+    btnCreateOnly.addEventListener('click', async () => {
+      const modeCreate = document.getElementById('modeCreate');
+      const roleNameEl = document.getElementById('role_name');
+      if (!modeCreate || !modeCreate.checked) return;
+
+      const roleName = (roleNameEl && roleNameEl.value || '').trim();
+      if (!roleName) { alert('Please enter a permission set name.'); return; }
+
+      btnCreateOnly.disabled = true;
+      btnCreateOnly.innerHTML =
+        '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>' +
+        'Creating…';
+
+      try {
+        const fd = new FormData();
+        fd.set('mode', 'create');
+        fd.set('role_name', roleName);
+        fd.set('role_type', document.getElementById('role_type')?.value || 'EndUserRole');
+
+        const r = await fetch(els.form.action + '?ajax=1&create_only=1', { method: 'POST', body: fd, headers: { 'Accept': 'application/json' }});
+        const j = await r.json();
+        if (!r.ok || !j || !j.ok) {
+          const serverMsg = j && (j.details || j.error || j.message || '');
+          throw new Error(serverMsg || ('HTTP ' + r.status));
+        }
+
+        createdRoleName = j.role;
+        if (summaryLock) summaryLock.remove();
+        if (btnProceed) btnProceed.disabled = false;
+
+        const btnGrantAll = document.getElementById('btnGrantAll');
+        if (btnGrantAll) btnGrantAll.disabled = false;
+
+        try {
+          document.getElementById('role_name').disabled = true;
+          document.getElementById('role_type').disabled = true;
+        } catch(_){}
+
+        btnCreateOnly.classList.replace('btn-primary', 'btn-outline-primary');
+        btnCreateOnly.textContent = 'Created';
+
+        initCollapseTips();
+      } catch (e) {
+        alert('Create failed: ' + e.message);
+        btnCreateOnly.disabled = false;
+        btnCreateOnly.textContent = 'Create Permission Set';
+      }
+    });
+  }
+
+  function showFlash(kind, html){
+    const host = document.getElementById('flashArea');
+    if (!host) return;
+    host.innerHTML = `
+      <div class="alert alert-${kind} alert-dismissible fade show" role="alert">
+        ${html}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>`;
+  }
+
+  // Marks a projection row as "Custom" in the Access column
+  function markProjectionAsCustom(projection){
+    const sel = document.querySelector(`.access-select[data-projection="${CSS.escape(projection)}"]`);
+    if (!sel) return;
+
+    // ensure a "Custom" option exists
+    let opt = Array.from(sel.options).find(o => o.value === 'Custom');
+    if (!opt) {
+      opt = new Option('Custom','Custom');
+      sel.add(opt);
+    }
+
+    // select it and keep our in-memory map in sync
+    sel.value = 'Custom';
+    accessByProjection.set(projection, 'Custom');
+    syncOutgoingJSON();
+
+    // tweak the little note beside the dropdown so it reads nicer
+    const note = document.querySelector(`[data-access-frozen="${CSS.escape(projection)}"]`);
+    if (note) note.textContent = '(customized)';
+  }
+
+
+  function showPaneLoading(pane, text){
+    if (!pane) return;
+    pane.innerHTML = `
+      <div class="loading-wrap">
+        <div class="spinner-border" role="status" aria-hidden="true"></div>
+        <span class="ms-2">${text || 'Loading data…'}</span>
+      </div>`;
+  }
+
+
+  function computeEffectiveRole(){
+    const roleFromCreate = (typeof createdRoleName === 'string' && createdRoleName.trim()) ? createdRoleName.trim() : '';
+    const sel = document.getElementById('existing_role');
+    const roleFromSelect = (sel && !sel.disabled) ? (sel.value || '').trim() : '';
+    const roleFromInput  = (document.getElementById('role_name') ? (document.getElementById('role_name').value || '').trim() : '');
+    return roleFromCreate || roleFromSelect || roleFromInput;
+  }
+
+  function serializeCommandGrants(){
+    const items = Object.keys(grantsByProjection).map(p => ({
+      projection: p,
+      commands: grantsByProjection[p],
+      client: "web"
+    })).filter(x => x.commands && x.commands.length > 0);
+    return JSON.stringify({ items });
+  }
+
+  const IS_LOCK = {{ 'true' if lock else 'false' }};
+
+  const btnGrantAll   = document.getElementById('btnGrantAll');
+  const btnGrantUsers = document.getElementById('btnGrantUsers');
+  if (!IS_LOCK) {
+    if (btnGrantAll)   btnGrantAll.disabled = true;
+    if (btnGrantUsers) {
+      btnGrantUsers.classList.add('disabled');
+      btnGrantUsers.setAttribute('aria-disabled','true');
+    }
+  }
+
+  initCollapseTips();
+
+  // === UI helpers for "blocking save" experience (no logic change) ===
+  function beginSyncUI(paneOrDoc, opts = {}) {
+    const root = paneOrDoc || document;
+    const btn  = root.querySelector('[data-save-btn="1"]') || root.querySelector('#btnSave');
+    let status = root.querySelector('[data-sync-status="1"]');
+    if (btn) {
+      btn.disabled = true;
+      if (!btn.dataset.originalLabel) btn.dataset.originalLabel = btn.innerHTML;
+      btn.innerHTML =
+        '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>' +
+        (opts.label || 'Saving…');
+      btn.setAttribute('aria-busy', 'true');
+    }
+    if (!status && btn && btn.parentNode) {
+      status = document.createElement('div');
+      status.setAttribute('data-sync-status', '1');
+      status.className = 'text-muted small mt-2';
+      btn.parentNode.insertBefore(status, btn);
+    }
+    if (status) {
+      status.textContent = opts.status || 'Do not close — syncing changes with IFS…';
+      status.classList.remove('d-none');
+    }
+  }
+  function endSyncUI(paneOrDoc, ok = true) {
+    const root = paneOrDoc || document;
+    const btn  = root.querySelector('[data-save-btn="1"]') || root.querySelector('#btnSave');
+    const status = root.querySelector('[data-sync-status="1"]');
+    if (btn && btn.dataset.originalLabel) {
+      btn.innerHTML = btn.dataset.originalLabel;
+      btn.disabled = false;
+      btn.removeAttribute('aria-busy');
+      delete btn.dataset.originalLabel;
+    }
+    if (status) {
+      status.textContent = ok ? 'All changes saved.' : 'Some changes failed. Check logs.';
+      // auto-hide after a moment
+      setTimeout(() => status.classList.add('d-none'), 2500);
+    }
+  }
+
+
+  btnGrantAll?.addEventListener('click', async () => {
+    const role = computeEffectiveRole();
+    if (!role) { showFlash('warning','Please create the permission set first.'); return; }
+
+    const fd = new FormData(els.form);
+    fd.set('mode', 'update');
+    fd.set('existing_role', role);
+    fd.set('command_grants_json', serializeCommandGrants());
+
+    btnGrantAll.disabled = true;
+    btnGrantAll.innerHTML =
+      '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Granting…';
+
+    try {
+      const url = els.form.action + '?ajax=1&noredirect=1';
+      const r = await fetch(url, { method:'POST', body: fd, headers:{'Accept':'application/json'} });
+      const j = await r.json();
+      if (!r.ok || !j || !j.ok) {
+        const serverMsg = j && (j.details || j.error || j.message || '');
+        throw new Error(serverMsg || ('HTTP ' + r.status));
+      }
+
+      showFlash('success', `All permissions have been successfully granted to role <strong>${role}</strong>.`);
+      btnGrantAll.classList.remove('btn-success');
+      btnGrantAll.classList.add('btn-outline-success');
+      btnGrantAll.textContent = 'Granted';
+
+      const btnGrantUsers = document.getElementById('btnGrantUsers');
+      if (btnGrantUsers) setGrantUsersHref(btnGrantUsers);
+
+      // Immediately enforce ReadOnly for any rows set to ReadOnly
+      try { await grantReadOnlyForMarked(role); } catch (_) { /* helper already flashed */ }
+
+      if (btnGrantUsers) {
+        btnGrantUsers.classList.remove('disabled');
+        btnGrantUsers.removeAttribute('aria-disabled');
+        btnGrantUsers.classList.remove('btn-outline-primary');
+        btnGrantUsers.classList.add('btn-primary');
+        if (!btnGrantUsers.href) btnGrantUsers.href = `/assign_users?role=${encodeURIComponent(role)}&entity=users`;
+      }
+
+    (function () {
+        const gUsers = document.getElementById('btnGrantUsers');
+        if (!gUsers) return;
+
+        gUsers.addEventListener('click', function (e) {
+          // If still disabled or no target yet, do nothing
+          if (this.classList.contains('disabled') || !this.getAttribute('href')) return;
+
+          // Guard against double-clicks before navigation
+          if (this.dataset.loading === '1') {
+            e.preventDefault();
+            return;
+          }
+          this.dataset.loading = '1';
+
+          // Lock visual state and show spinner; allow navigation to proceed
+          this.setAttribute('aria-disabled', 'true');
+          this.innerHTML =
+            '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>' +
+            'Opening…';
+          // (optional) make it visually disabled; navigation already in-flight
+          this.classList.add('disabled');
+        });
+      })();
+      // Now the line-level "Commands & grants" controls can open,
+      // and access dropdowns get locked (matches your create flow)
+      enableCollapses();
+      freezeAccessSelects();
+
+    } catch(e) {
+      showFlash('danger', 'Grant failed: ' + e.message);
+      btnGrantAll.disabled = false;
+      btnGrantAll.textContent = 'Grant all';
+    }
+  });
+
+  async function grantReadOnlyForMarked(role) {
+    // collect all rows whose Access is ReadOnly
+    const readonly = Array.from(document.querySelectorAll('.access-select'))
+      .filter(sel => (sel.value || '').toLowerCase() === 'readonly')
+      .map(sel => sel.getAttribute('data-projection'))
+      .filter(Boolean);
+
+    if (!readonly.length) return;
+
+    // Fire the POST for each ReadOnly line
+    const calls = readonly.map(proj =>
+      fetch('/api/ifs/projection_grant_readonly', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ role, projection: proj })
+      }).then(async r => {
+        if (!r.ok) {
+          const t = await r.text().catch(()=>'');
+          throw new Error(`ReadOnly grant failed for ${proj}: HTTP ${r.status} ${t.slice(0,160)}`);
+        }
+        return r.json().catch(()=> ({}));
+      })
+    );
+
+    // Let some succeed even if one fails; show a single toast if any fail.
+    const results = await Promise.allSettled(calls);
+    const errs = results.filter(x => x.status === 'rejected').map(x => x.reason && x.reason.message);
+    if (errs.length) {
+      showFlash('warning', 'Some ReadOnly grants failed:<br>' + errs.map(e => `<div class="small text-muted">${e}</div>`).join(''));
+    }
+  }
+
+  (function(){
+    {% if not is_update %}
+    const modeCreate = document.getElementById('modeCreate');
+    const modeUpdate = document.getElementById('modeUpdate');
+    const createWrap = document.getElementById('createWrap');
+    const updateWrap = document.getElementById('updateWrap');
+    const roleName  = document.getElementById('role_name');
+    const existing  = document.getElementById('existing_role');
+
+    function syncMode() {
+      const creating = modeCreate.checked;
+      createWrap.classList.toggle('hide', !creating);
+      updateWrap.classList.toggle('hide', creating);
+      if (roleName) roleName.required = creating;
+      if (existing) existing.required = !creating;
+    }
+    modeCreate.addEventListener('change', syncMode);
+    modeUpdate.addEventListener('change', syncMode);
+    syncMode();
+    {% endif %}
+  })();
+
+  initAccessMap();
+</script>
+<script>
+  (function () {
+    const LOCK = {{ 'true' if lock else 'false' }};
+    if (!LOCK) return;
+
+    // values from server
+    const ROLE  = {{ (update_role or '')|tojson }};
+    const RTYPE = {{ (prefill_role_type or 'EndUserRole')|tojson }};
+
+    // 1) force "Update existing" mode and disable both radios
+    const modeCreateEl = document.querySelector('input[name="mode"][value="create"]');
+    const modeUpdateEl = document.querySelector('input[name="mode"][value="update"]');
+    if (modeUpdateEl) modeUpdateEl.checked = true;
+    [modeCreateEl, modeUpdateEl].forEach(el => el && (el.disabled = true));
+
+    // 2) fill & disable the name + role type controls
+    const nameInput  = document.getElementById('new_role_name')
+                    || document.getElementById('role_name')
+                    || document.querySelector('input[name="role_name"]');
+    const roleTypeEl = document.getElementById('role_type')
+                    || document.querySelector('select[name="role_type"]');
+
+    if (nameInput)  { nameInput.value = ROLE;  nameInput.disabled = true; }
+    if (roleTypeEl) { roleTypeEl.value = RTYPE; roleTypeEl.disabled = true; }
+
+    // 3) hide the "Create Permission Set" button
+    const createBtn = document.getElementById('btnCreateOnly')
+                  || document.getElementById('btnCreatePermission')
+                  || [...document.querySelectorAll('button')].find(b => /create permission set/i.test(b.textContent));
+    if (createBtn) { createBtn.classList.add('d-none'); createBtn.disabled = true; }
+
+    // 4) enable only "Grant all" here; DO NOT touch "Grant users" yet
+    const grantAllBtn2 = document.getElementById('btnGrantAll')
+                      || [...document.querySelectorAll('button')].find(b => /grant all/i.test(b.textContent));
+    if (grantAllBtn2) grantAllBtn2.disabled = false;
+
+    // NOTE: intentionally removed the code that pre-enabled grantUsersBtn2.
+    // It will be enabled after Grant all succeeds via:
+    // if (btnGrantUsers) setGrantUsersHref(btnGrantUsers);
+  })();
+
+    // --- Guard: never submit the form when a collapse toggle is clicked ---
+  els.form.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-bs-toggle="collapse"]');
+    if (!t) return;
+    // If it's a <button> without explicit type, force it to 'button'
+    if (t.tagName === 'BUTTON' && !t.getAttribute('type')) {
+      t.setAttribute('type', 'button');
+    }
+  });
+
+
+</script>
+
+<script>
+  (function hideCommandsTab() {
+    // Find any tab control whose visible text is exactly "Commands"
+    document.querySelectorAll('.nav-link, [role="tab"], button').forEach(el => {
+      const text = (el.textContent || '').trim().toLowerCase();
+      if (text === 'commands') {
+        // Hide the tab control
+        el.classList.add('d-none');
+
+        // Hide the matching pane (by data-bs-target or href)
+        const target = el.getAttribute('data-bs-target') || el.getAttribute('href');
+        if (target && target.startsWith('#')) {
+          const pane = document.querySelector(target);
+          if (pane) pane.classList.add('d-none');
+        }
+      }
+    });
+  })();
+</script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script id="smart-purple-toggle">
+(function(){
+  // Theme persistence
+  try{
+    var saved = localStorage.getItem('smart-theme') || 'light';
+    if(saved === 'purple'){ document.body.classList.add('theme-purple'); }
+  }catch(e){}
+
+  function ensureButton(){
+    if(document.getElementById('themeSwitcher')) return;
+    var btn = document.createElement('button');
+    btn.id = 'themeSwitcher';
+    btn.type = 'button';
+    btn.className = 'btn btn-sm';
+    btn.innerHTML = '<span class="dot"></span><span class="label">Dark Purple</span>';
+    btn.addEventListener('click', function(){
+      document.body.classList.toggle('theme-purple');
+      var on = document.body.classList.contains('theme-purple');
+      try{ localStorage.setItem('smart-theme', on ? 'purple' : 'light'); }catch(e){}
+    });
+    document.body.appendChild(btn);
+  }
+
+  // showPaneLoading helper (guarded)
+  if(typeof window.showPaneLoading !== 'function'){
+    window.showPaneLoading = function(pane, text){
+      if(!pane) return;
+      pane.innerHTML = '<div class="loading-wrap"><div class="spinner-border" role="status" aria-hidden="true"></div><span class="ms-2">'
+        + (text || 'Loading data…') + '</span></div>';
+    };
+  }
+
+  // Init after DOM
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', ensureButton);
+  }else{
+    ensureButton();
+  }
+})();
+</script>
+
+
+<script id="smart-purple-edit-button">
+(function(){
+  function addEditButtons(){
+    try{
+      var dels = document.querySelectorAll('button.btn-outline-danger[data-action="delete-row"]');
+      dels.forEach(function(del){
+        if (del.nextElementSibling && del.nextElementSibling.dataset && del.nextElementSibling.dataset.ui === 'edit-projection') return;
+        var edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'btn btn-sm btn-outline-secondary';
+        edit.setAttribute('data-ui','edit-projection');
+        // purely cosmetic for now; preserve existing logic untouched
+        del.parentNode.insertBefore(edit, del.nextSibling);
+        // small left margin
+        edit.style.marginLeft = '.25rem';
+      });
+    }catch(e){ /* ignore */ }
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', addEditButtons);
+  }else{
+    addEditButtons();
+  }
+})();
+</script>
+
+<script id="edit-save-logic">
+(function () {
+  // Small helper to build the IFS projection action URLs
+  function ifsBase(){
+    var meta = document.querySelector('meta[name="ifs-projection-base"]');
+    var base = (window.ifsProjectionBase || (meta && meta.content) || '').replace(/\/+$/,'');
+    return base || '/main/ifsapplications/projection/v1/PermissionSetHandling.svc';
+  }
+  function q(s){ return String(s||'').replace(/'/g, "''"); } // OData quoting
+
+  async function postODataAction(url){
+    const r = await fetch(url, {
+      method: 'POST',
+      credentials: 'include', // <-- ensures auth cookies sent like Postman
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: '{}' // <-- must be a string, not {}
+    });
+
+    // If the service returns 204 (No Content), treat as success
+    if (r.status === 204) return {};
+
+    if (!r.ok) {
+      const txt = await r.text().catch(()=> '');
+      throw new Error(`HTTP ${r.status}: ${txt.slice(0,160)}`);
+    }
+
+    // Return parsed JSON if any, else empty
+    try { return await r.json(); } catch { return {}; }
+  }
+
+
+  // Call Full / ReadOnly projection-grant actions
+  async function grantProjectionAccess(projection, role, access) {
+    const payload = { projection, role };
+
+    if (access === "Full" || access === "FullAccess") {
+      const resp = await fetch('/api/ifs/projection_grant_full', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!resp.ok) throw new Error(`GrantFull failed: HTTP ${resp.status}`);
+      return await resp.json();
+    }
+
+    if (access === "ReadOnly") {
+      const resp = await fetch('/api/ifs/projection_grant_readonly', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!resp.ok) throw new Error(`GrantReadOnly failed: HTTP ${resp.status}`);
+      return await resp.json();
+    }
+
+    throw new Error("Unsupported access type");
+  }
+
+
+  // Hide "Custom" while editing (do not remove permanently)
+  function hideCustomOption(selectEl){
+    const opts = Array.from(selectEl.options || []);
+    opts.forEach(o => {
+      if (o.value === 'Custom') o.hidden = true;
+    });
+    // If current value is Custom, switch to ReadOnly by default for editing
+    if (selectEl.value === 'Custom') selectEl.value = 'ReadOnly';
+  }
+  function showCustomOption(selectEl){
+    const opts = Array.from(selectEl.options || []);
+    opts.forEach(o => {
+      if (o.value === 'Custom') o.hidden = false;
+    });
+  }
+
+  function findRowParts(btn){
+    const row = btn.closest('tr');
+    if (!row) return {};
+    const accessSelect = row.querySelector('.access-select');
+    const titleEl = row.querySelector('.proj-title .fw-semibold');
+    return { row, accessSelect, titleEl };
+  }
+
+  // Wire all existing edit buttons (inserted earlier by smart-purple-edit-button)
+  function wireEditors(){
+    document.querySelectorAll('.btn-outline-secondary[data-ui="edit-projection"]').forEach(function(editBtn){
+      if (editBtn.dataset.wired === '1') return;
+      editBtn.dataset.wired = '1';
+
+      editBtn.addEventListener('click', async function(){
+        const { accessSelect, titleEl } = findRowParts(editBtn);
+        if (!accessSelect || !titleEl) return;
+        const projection = (titleEl.textContent || '').trim();
+        const role = (typeof computeEffectiveRole === 'function') ? computeEffectiveRole() : '';
+        if (!projection || !role) { showFlash('warning','Missing role or projection.'); return; }
+
+        const mode = editBtn.getAttribute('data-mode') || 'edit';
+
+        if (mode === 'edit') {
+          // Enter edit mode: enable select and hide "Custom"
+          accessSelect.dataset.orig = accessSelect.value;
+          accessSelect.disabled = false;
+          hideCustomOption(accessSelect);
+          editBtn.setAttribute('data-mode', 'save'); // swaps icon via CSS
+          return;
+        }
+
+        // Save mode → perform the appropriate OData action call, then lock back
+        if (mode === 'save') {
+          const newVal = accessSelect.value; // 'ReadOnly' or 'FullAccess' only
+          // Optimistic UI disable while saving
+          accessSelect.disabled = true;
+          editBtn.setAttribute('aria-disabled','true');
+
+          try {
+            await grantProjectionAccess(projection, role, newVal);
+
+            // Persist in our local tracking map too (keeps outgoing JSON in sync)
+            if (typeof accessByProjection !== 'undefined' && accessByProjection instanceof Map) {
+              accessByProjection.set(projection, newVal);
+              if (typeof syncOutgoingJSON === 'function') syncOutgoingJSON();
+            }
+
+            // Leave Custom hidden only during edit; now restore visibility
+            showCustomOption(accessSelect);
+            editBtn.removeAttribute('aria-disabled');
+            editBtn.setAttribute('data-mode','edit'); // back to pencil
+            showFlash('success', `Access updated to <strong>${newVal}</strong> for <strong>${projection}</strong>.`);
+          } catch (err) {
+            // revert changes on failure
+            accessSelect.value = accessSelect.dataset.orig || accessSelect.value;
+            accessSelect.disabled = true;
+            showCustomOption(accessSelect);
+            editBtn.removeAttribute('aria-disabled');
+            editBtn.setAttribute('data-mode','edit');
+            showFlash('danger', 'Failed to update access: ' + err.message);
+          }
+        }
+      });
+    });
+  }
+
+  // Initial wire + re-wire if DOM changes (e.g., after table redraws)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', wireEditors);
+  } else {
+    wireEditors();
+  }
+  // Optional: observe future DOM mutations in the table area to re-wire buttons
+  const table = document.querySelector('table');
+  if (table && 'MutationObserver' in window) {
+    const mo = new MutationObserver(wireEditors);
+    mo.observe(table, { subtree:true, childList:true });
+  }
+})();
+</script>
+<script>
+(function(){
+  // Helper: get all child action checkboxes for a command key
+  function getChildChecks(key){
+    const row = document.getElementById(`actions-${key}`);
+    return row ? Array.from(row.querySelectorAll('input[data-action-check="1"][data-key="'+key+'"]')) : [];
+  }
+
+  // Helper: update parent checkbox (checked / indeterminate) based on child states
+  window.syncParentCheckboxState = function(key){
+    const parent = document.querySelector('input[data-command-check="1"][data-key="'+key+'"]');
+    if (!parent) return;
+    const kids = getChildChecks(key);
+    if (!kids.length){
+      parent.checked = false;
+      parent.indeterminate = false;
+      return;
+    }
+    const checkedCount = kids.filter(k => k.checked).length;
+    parent.checked = checkedCount === kids.length;
+    parent.indeterminate = checkedCount > 0 && checkedCount < kids.length;
+  };
+
+  // Helper: set a badge next to a specific checkbox
+  function setBadgeForCheck(chk, granted){
+    const li = chk.closest('li');
+    const badge = li && li.querySelector('[data-grant-badge="1"]');
+    if (!badge) return;
+    badge.classList.toggle('bg-success', granted);
+    badge.classList.toggle('bg-secondary', !granted);
+    badge.textContent = granted ? 'Granted' : 'Not granted';
+  }
+
+  // Delegate: child action checkbox toggles its own badge + sync parent
+  document.addEventListener('change', (e) => {
+    const chk = e.target.closest('input[data-action-check="1"]');
+    if (!chk) return;
+
+    const granted = !!chk.checked;
+    setBadgeForCheck(chk, granted);
+
+    // TODO: if you want to persist immediately, call your grant API here.
+    // e.g., grantAction({ projection: chk.dataset.projection, command: chk.dataset.command, entity: chk.dataset.entity, action: chk.dataset.action, grant: granted })
+
+    syncParentCheckboxState(chk.dataset.key);
+  });
+
+  // Delegate: parent (command) checkbox toggles all children + badges
+  document.addEventListener('change', (e) => {
+    const parent = e.target.closest('input[data-command-check="1"]');
+    if (!parent) return;
+
+    const key = parent.dataset.key;
+    const kids = getChildChecks(key);
+    const grantAll = !!parent.checked;
+
+    kids.forEach(chk => {
+      chk.checked = grantAll;
+      setBadgeForCheck(chk, grantAll);
+      // TODO: persist here if needed for each action
+    });
+
+    // Keep state tidy
+    parent.indeterminate = false;
+  });
+})();
+</script>
+<script>
+  // Minimal JSON POST helper used by persistActionCheckboxesInPane
+  async function postJSON(url, body) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    // Try to parse JSON; still surface good errors if server returns non-JSON
+    let j = null;
+    try { j = await res.json(); } catch (_) {}
+    if (!res.ok) {
+      const msg = (j && (j.error || j.details || j.message)) || `HTTP ${res.status}`;
+      throw new Error(msg);
+    }
+    return j || {};
+  }
+</script>
+
+<script>
+  // Persist all "View actions" checkboxes currently rendered inside this pane
+  async function persistActionCheckboxesInPane(paneEl){
+    const role = (typeof computeEffectiveRole === 'function') ? computeEffectiveRole() : '';
+    if (!role) return;
+
+    // every checkbox rendered inside the command "View actions" collapses
+    const checks = paneEl.querySelectorAll('input[data-action-check="1"]');
+
+    // Batch sequentially (keeps server-side ordering/noise minimal)
+    for (const chk of checks) {
+      const projection = chk.getAttribute('data-projection') || '';
+      const entity     = chk.getAttribute('data-entity') || '';
+      const action     = chk.getAttribute('data-action') || '';
+      const op         = chk.checked ? 'grant' : 'revoke';
+
+      if (!projection || !action) continue;
+
+      // POST to the existing EAG endpoint
+      await postJSON('/api/ifs/entity_action_grant', {
+        op, role, projection, entity, action
+      });
+
+      // Optional: refresh the row badge in the main EAG table if present
+      try {
+        const esc = (s) => (window.CSS && CSS.escape) ? CSS.escape(String(s))
+                                                     : String(s).replace(/["\\]/g,'\\$&');
+        const rowSel = `tr[data-kind="eag"][data-entity="${esc(entity)}"][data-action="${esc(action)}"]`;
+        paneEl.querySelectorAll(rowSel).forEach(row => {
+          const cell = row.querySelector('[data-badge="1"]');
+          if (cell && typeof badgeGranted === 'function') {
+            cell.innerHTML = badgeGranted(chk.checked);
+          }
+          const tgl = row.querySelector('input[type="checkbox"][data-grant-toggle="1"]');
+          if (tgl && tgl.checked !== chk.checked) {
+            tgl.checked = chk.checked;
+            tgl.dispatchEvent(new Event('input',  { bubbles:true }));
+            tgl.dispatchEvent(new Event('change', { bubbles:true }));
+          }
+        });
+      } catch(_) {}
+    }
+  }
+</script>
+<script>
+// Wait until a condition is true (with a short timeout)
+async function waitFor(fn, {tries=20, interval=75} = {}) {
+  for (let i=0; i<tries; i++) {
+    const v = fn();
+    if (v) return v;
+    await new Promise(r => setTimeout(r, interval));
+  }
+  return null;
+}
+
+// Given a pane and a master checked state, open every command's actions panel and
+// toggle all child action checkboxes + badges; keep parent cmd checkbox in sync.
+async function applyProjectionSelectAllToActions(pane, checked) {
+  // All "View actions" buttons under this projection pane
+  const buttons = Array.from(pane.querySelectorAll('[data-actions-btn="1"]'));
+  for (const btn of buttons) {
+    const code  = btn.getAttribute('data-code') || '';
+    const proj  = btn.getAttribute('data-projection') || '';
+    const key   = `${proj}:${code}`.replace(/[^a-zA-Z0-9:_-]/g, '_');
+
+    // Ensure its detail row is open so children exist in DOM (cached data prevents refetch storms)
+    const detailRow = pane.querySelector(`#actions-${CSS.escape(key)}`);
+    const open = detailRow && detailRow.classList.contains('show');
+    if (!open && btn.click) btn.click();
+
+    // Wait for children to render
+    const scope = await waitFor(() =>
+      (detailRow && detailRow.querySelector('[data-actions-ul="1"]')) ? detailRow : null
+    );
+    if (!scope) continue;
+
+    // Toggle all child actions + badges
+    const kids = Array.from(scope.querySelectorAll('input[data-action-check="1"][data-key="'+key+'"]'));
+    kids.forEach(chk => {
+      chk.checked = !!checked;
+      const badge = chk.closest('li')?.querySelector('[data-grant-badge="1"]');
+      if (badge) {
+        badge.classList.toggle('bg-success', checked);
+        badge.classList.toggle('bg-secondary', !checked);
+        badge.textContent = checked ? 'Granted' : 'Not granted';
+      }
+    });
+
+    // Sync parent checkbox inside the actions panel
+    const parent = scope.querySelector('input[data-command-check="1"][data-key="'+key+'"]');
+    if (parent) {
+      parent.checked = !!checked;
+      parent.indeterminate = false;
+    }
+  }
+}
+</script>
+
+<script>
+// When a projection row collapses open, default to the "Entity Action Grants" tab
+document.addEventListener('shown.bs.collapse', (ev) => {
+  const pane = ev.target;                // the element that just expanded
+  if (!pane) return;
+
+  // Find the EAG tab link inside this pane:
+  // 1) prefer an explicit data marker if present,
+  // 2) fall back to any tab link whose target id contains "eag",
+  // 3) otherwise just pick the first tab (safe fallback).
+  const eagLink =
+    pane.querySelector('.nav [data-bs-toggle="tab"][data-tab="eag"]') ||
+    pane.querySelector('.nav [data-bs-toggle="tab"][href*="eag"], .nav [data-bs-toggle="tab"][data-bs-target*="eag"]') ||
+    pane.querySelector('.nav [data-bs-toggle="tab"]');
+
+  if (!eagLink) return;
+
+  // Only switch if it's not already active
+  if (!eagLink.classList.contains('active')) {
+    const tab = bootstrap.Tab.getOrCreateInstance(eagLink);
+    tab.show();  // this will fire your existing `shown.bs.tab` listener that loads EAG data
+  }
+});
+</script>
+
+
+</body>
+</html>

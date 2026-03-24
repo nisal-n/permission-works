@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Create / Update Permission Set</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .hide{display:none}
+    .cmd-row{display:flex;align-items:center;gap:.5rem;padding:.25rem .35rem;border-radius:.35rem}
+    .cmd-row:hover{background:#f8f9fa}
+    .cmd-name{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
+    .sticky-top-shadow{position:sticky;top:0;background:#fff;z-index:2;box-shadow:0 1px 0 rgba(0,0,0,.05)}
+    /* Disable interactions on the summary until role is created */
+    .disabled-wrap{position:relative}
+    .disabled-wrap.disabled{pointer-events:none; opacity:.55; filter:grayscale(.06)}
+    .disabled-wrap.disabled::after{
+      content:"Create the permission set to edit these options";
+      position:absolute; inset:auto 0 0 0; top:0;
+      background:linear-gradient(to bottom, rgba(255,255,255,.9), rgba(255,255,255,.75));
+      color:#6c757d; display:flex; align-items:center; justify-content:center;
+      font-weight:600; text-align:center; padding:2rem; border-radius:.25rem;
+    }
+  </style>
+</head>
+<body class="bg-light">
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center">
+    <h2 class="fw-bold text-primary mb-0">Create / Update Permission Set</h2>
+  </div>
+
+  {% if rows_for_ui %}
+  {% set is_update = (update_role is defined and update_role) %}
+
+  <form id="roleForm" action="/create_permission_set" method="post" class="mb-4 card shadow-sm">
+    <div class="card-body">
+      <div class="row g-3 mt-1 align-items-end">
+
+        {% if is_update %}
+          <!-- Hardcoded Update mode -->
+          <input type="hidden" name="mode" value="update">
+          <div class="col-md-4">
+            <label class="form-label mb-1">Mode</label>
+            <div class="d-flex gap-3">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="mode_dummy" id="modeCreate" value="create" disabled>
+                <label class="form-check-label" for="modeCreate">Create new</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="mode_dummy" id="modeUpdate" value="update" checked disabled>
+                <label class="form-check-label" for="modeUpdate">Update existing</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4" id="updateWrap">
+            <label class="form-label mb-1">Existing Permission Set (Role)</label>
+            <select class="form-select" id="existing_role_display" disabled>
+              <option selected>{{ update_role }}</option>
+            </select>
+            <input type="hidden" name="existing_role" id="existing_role" value="{{ update_role }}">
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label mb-1">Role type</label>
+            <select class="form-select" name="role_type" id="role_type" required>
+              <option value="EndUserRole" selected>End User Role</option>
+              <option value="FunctionalRole">Functional Role</option>
+            </select>
+          </div>
+
+          <div class="col-md-12 d-flex justify-content-end gap-2">
+            <button type="submit" class="btn btn-success" id="btnProceed">Proceed (Update)</button>
+          </div>
+
+        {% else %}
+          <!-- Normal Create/Update toggle (Create by default) -->
+          <div class="col-md-3">
+            <label class="form-label mb-1">Mode</label>
+            <div class="d-flex gap-3">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="mode" id="modeCreate" value="create" checked>
+                <label class="form-check-label" for="modeCreate">Create new</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="mode" id="modeUpdate" value="update">
+                <label class="form-check-label" for="modeUpdate">Update existing</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4" id="createWrap">
+            <label class="form-label mb-1">New Permission Set Name</label>
+            <input type="text" class="form-control" name="role_name" id="role_name" placeholder="Enter new Permission Set (Role)">
+          </div>
+
+          <div class="col-md-5 hide" id="updateWrap">
+            <label class="form-label mb-1">Select existing Permission Set (Role)</label>
+            <select class="form-select" name="existing_role" id="existing_role">
+              <option value="">-- choose role --</option>
+              {% for r in roles %}
+                <option value="{{ r.role }}">{{ r.role }}{% if r.description %} — {{ r.description }}{% endif %}</option>
+              {% endfor %}
+            </select>
+            {% if not roles %}
+              <div class="form-text text-danger mt-1">
+                No Permission Sets returned. Try again.
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label mb-1">Role type</label>
+            <select class="form-select" name="role_type" id="role_type" required>
+              <option value="EndUserRole" selected>End User Role</option>
+              <option value="FunctionalRole">Functional Role</option>
+            </select>
+          </div>
+
+          <!-- NEW: create-first + proceed buttons -->
+          <div class="col-md-12 d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-outline-primary" id="btnCreateOnly">
+              Create Permission Set
+            </button>
+            <button type="submit" class="btn btn-success" id="btnProceed" disabled>
+              Proceed (Grant)
+            </button>
+          </div>
+        {% endif %}
+      </div>
+
+      <div id="flash" class="alert d-none mt-3" role="alert"></div>
+    </div>
+
+    <!-- Hidden field that will contain all command selections as JSON -->
+    <input type="hidden" name="command_grants_json" id="command_grants_json" value="{}">
+  </form>
+
+  <!-- Summary block (locked until created in create-mode) -->
+  <div id="summaryBlock" class="card shadow-sm disabled-wrap {% if not is_update %}disabled{% endif %}">
+    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Classified Projections</h5>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-striped table-hover mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Projection</th>
+              <th style="width:360px">Access & Commands</th>
+              <th style="width:220px" class="text-end pe-3">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for trace in rows_for_ui %}
+            {% set is_proj = not (trace.projection.startswith('Quick report -')
+                                  or trace.projection.startswith('Lobby -')
+                                  or trace.projection.startswith('Workflow -')
+                                  or trace.projection.startswith('Report -')) %}
+
+            <!-- MAIN ROW -->
+            <tr>
+              <td>{{ trace.projection }}</td>
+              <td>
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                  <select class="form-select form-select-sm" name="access_{{ loop.index }}">
+                    <option value="full" {% if trace.access == 'full' %}selected{% endif %}>Full Access</option>
+                    <option value="read" {% if trace.access == 'read' %}selected{% endif %}>Read Only</option>
+                  </select>
+
+                  {% if is_proj %}
+                    <button type="button"
+                            class="btn btn-outline-primary btn-sm"
+                            onclick="openCommandsModal('{{ trace.projection }}')">
+                      Select commands…
+                    </button>
+                    <span class="text-muted small ms-1" data-proj="{{ trace.projection }}">0 selected</span>
+                  {% endif %}
+                </div>
+              </td>
+              <td class="text-end pe-3">
+                <div class="d-inline-flex gap-2">
+                  <!-- NEW: collapse toggle -->
+                  <button class="btn btn-outline-secondary btn-sm"
+                          type="button"
+                          data-bs-toggle="collapse"
+                          data-bs-target="#projDetails-{{ loop.index }}"
+                          aria-expanded="false"
+                          aria-controls="projDetails-{{ loop.index }}">
+                    Details
+                  </button>
+
+                  <form method="post" action="/delete_ai_trace" class="d-inline">
+                    <input type="hidden" name="projection" value="{{ trace.projection }}">
+                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+
+            <!-- COLLAPSE DETAILS ROW (spans full table width) -->
+            <tr class="collapse-row">
+              <td colspan="3" class="p-0">
+                <div id="projDetails-{{ loop.index }}" class="collapse border-top">
+                  <div class="p-3">
+                    <!-- Tabs -->
+                    <ul class="nav nav-tabs" id="projTabs-{{ loop.index }}" role="tablist">
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link active"
+                                id="tab-cmds-{{ loop.index }}"
+                                data-bs-toggle="tab"
+                                data-bs-target="#pane-cmds-{{ loop.index }}"
+                                type="button" role="tab"
+                                aria-controls="pane-cmds-{{ loop.index }}"
+                                aria-selected="true">
+                          Select Commands
+                        </button>
+                      </li>
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link"
+                                id="tab-entity-{{ loop.index }}"
+                                data-bs-toggle="tab"
+                                data-bs-target="#pane-entity-{{ loop.index }}"
+                                type="button" role="tab"
+                                aria-controls="pane-entity-{{ loop.index }}"
+                                aria-selected="false">
+                          Entity Action grants
+                        </button>
+                      </li>
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link"
+                                id="tab-proj-{{ loop.index }}"
+                                data-bs-toggle="tab"
+                                data-bs-target="#pane-proj-{{ loop.index }}"
+                                type="button" role="tab"
+                                aria-controls="pane-proj-{{ loop.index }}"
+                                aria-selected="false">
+                          Projection Action grants
+                        </button>
+                      </li>
+                    </ul>
+
+                    <!-- Tab panes -->
+                    <div class="tab-content border border-top-0 rounded-bottom p-3">
+                      <!-- Select Commands -->
+                      <div class="tab-pane fade show active"
+                          id="pane-cmds-{{ loop.index }}"
+                          role="tabpanel"
+                          aria-labelledby="tab-cmds-{{ loop.index }}">
+                        {% if is_proj %}
+                          <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <button type="button" class="btn btn-primary btn-sm"
+                                    onclick="openCommandsModal('{{ trace.projection }}')">
+                              Open command selector
+                            </button>
+                            <span class="text-muted small" data-proj="{{ trace.projection }}">0 selected</span>
+                          </div>
+                          <div class="form-text mt-2">
+                            Use the selector to pick specific commands for
+                            <strong>{{ trace.projection }}</strong>. Your choices are stored client-side and sent on <em>Proceed</em>.
+                          </div>
+                        {% else %}
+                          <div class="text-muted">No command selection for this row type.</div>
+                        {% endif %}
+                      </div>
+
+                      <!-- Entity Action grants (placeholder hook) -->
+                      <div class="tab-pane fade"
+                          id="pane-entity-{{ loop.index }}"
+                          role="tabpanel"
+                          aria-labelledby="tab-entity-{{ loop.index }}">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                          <span class="badge bg-secondary">Coming soon</span>
+                          <span class="text-muted">
+                            Grant entity-level actions for <strong>{{ trace.projection }}</strong>.
+                          </span>
+                        </div>
+                        <!-- Hook: add your controls or API wiring here -->
+                      </div>
+
+                      <!-- Projection Action grants (placeholder hook) -->
+                      <div class="tab-pane fade"
+                          id="pane-proj-{{ loop.index }}"
+                          role="tabpanel"
+                          aria-labelledby="tab-proj-{{ loop.index }}">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                          <span class="badge bg-secondary">Coming soon</span>
+                          <span class="text-muted">
+                            Grant projection-level actions for <strong>{{ trace.projection }}</strong>.
+                          </span>
+                        </div>
+                        <!-- Hook: add your controls or API wiring here -->
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {% else %}
+    <p class="text-muted mt-3">No summary available. Stop trace to generate it.</p>
+  {% endif %}
+
+  <!-- server → JS (no Jinja inside scripts) -->
+  <div id="pageVars"
+       data-created="{{ 'true' if (update_role is defined and update_role) else 'false' }}"
+       data-role="{{ update_role or '' }}"></div>
+</div>
+
+<!-- Commands Modal -->
+<div class="modal fade" id="commandsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Commands for <span id="cmdProjName"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="sticky-top-shadow p-3">
+          <div class="row g-2 align-items-center">
+            <div class="col-sm-8">
+              <input id="cmdFilter" class="form-control form-control-sm" placeholder="Filter commands…">
+            </div>
+            <div class="col-sm-4 text-sm-end text-muted small">
+              <span id="cmdCounter">0</span> selected
+            </div>
+          </div>
+        </div>
+        <div class="p-3">
+          <div id="cmdLoading" class="text-muted">Loading…</div>
+          <div id="cmdError" class="alert alert-danger d-none"></div>
+          <div id="cmdList" class="d-none"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="btnSaveSelection" class="btn btn-primary">Save selection</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // --- selection store (projection -> [commands]) ---
+  const grantsByProjection = {};  // { "ProjectionName": ["CmdA","CmdB"] }
+
+  // --- Commands modal state ---
+  let bsModal, currentProjection = null, allCommands = [], selected = new Set();
+
+  const els = {
+    form:         document.getElementById('roleForm'),
+    hiddenJson:   document.getElementById('command_grants_json'),
+    title:        document.getElementById('cmdProjName'),
+    loading:      document.getElementById('cmdLoading'),
+    error:        document.getElementById('cmdError'),
+    list:         document.getElementById('cmdList'),
+    filter:       document.getElementById('cmdFilter'),
+    counter:      document.getElementById('cmdCounter'),
+    btnSave:      document.getElementById('btnSaveSelection'),
+  };
+
+  function updateCounter() {
+    els.counter.textContent = selected.size;
+  }
+
+  // Normalize API responses into simple string command names
+  function normalizeCommands(arr) {
+    if (!Array.isArray(arr)) return [];
+    return arr.map(item => {
+      if (typeof item === 'string') return item;
+      if (item && typeof item === 'object') {
+        return String(
+          item.command ?? item.Command ?? item.name ?? item.Name ?? item.action ?? item.Action ?? ''
+        ).trim();
+      }
+      return '';
+    }).filter(Boolean);
+  }
+
+  function renderList() {
+    const q = (els.filter.value || '').toLowerCase().trim();
+    const items = allCommands.filter(c => !q || c.toLowerCase().includes(q));
+    if (!items.length) {
+      els.list.innerHTML = `<div class="text-muted">No commands match "${q}".</div>`;
+      return;
+    }
+    els.list.innerHTML = items.map(c => `
+      <label class="cmd-row form-check">
+        <input class="form-check-input" type="checkbox" value="${c}" ${selected.has(c) ? 'checked' : ''} />
+        <span class="cmd-name">${c}</span>
+      </label>
+    `).join('');
+    els.list.querySelectorAll('input[type=checkbox]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        if (cb.checked) selected.add(cb.value); else selected.delete(cb.value);
+        updateCounter();
+      });
+    });
+  }
+
+  function setRowSelectedCount(projection, count) {
+    const el = document.querySelector(`[data-proj="${CSS.escape(projection)}"]`);
+    if (el) el.textContent = `${count} selected`;
+  }
+
+  // Detect "Full access" either by projection label or by the row's Access select value
+  function isRowFullAccess(projection) {
+    const byName = (projection || '').trim().toLowerCase() === 'full access';
+    const badge = document.querySelector(`[data-proj="${CSS.escape(projection)}"]`);
+    let bySelect = false;
+    if (badge) {
+      const row = badge.closest('tr');
+      const sel = row && row.querySelector('select[name^="access_"]');
+      bySelect = sel && (sel.value || '').toLowerCase() === 'full';
+    }
+    return byName || bySelect;
+  }
+
+  function openCommandsModal(projection) {
+    currentProjection = projection;
+    els.title.textContent = projection;
+    els.loading.classList.remove('d-none');
+    els.error.classList.add('d-none');
+    els.list.classList.add('d-none');
+    els.list.innerHTML = '';
+    els.filter.value = '';
+
+    // start from any saved selections for this projection
+    selected = new Set(grantsByProjection[projection] || []);
+    updateCounter();
+
+    if (!bsModal) bsModal = new bootstrap.Modal(document.getElementById('commandsModal'));
+    bsModal.show();
+
+    fetch(`/api/ifs/action_commands?projection=${encodeURIComponent(projection)}`)
+      .then(r => r.json().then(j => ({ok:r.ok, status:r.status, body:j})))
+      .then(({ok, status, body}) => {
+        els.loading.classList.add('d-none');
+        if (!ok) {
+          const msg = body && body.error ? `${body.error} (${status})` : `HTTP ${status}`;
+          els.error.textContent = 'Failed to load commands: ' + msg;
+          els.error.classList.remove('d-none');
+          return;
+        }
+
+        // Normalize whatever the API returns (objects/strings) into simple names
+        allCommands = normalizeCommands(body && body.commands);
+
+        // Full access auto-tick (only if no prior custom selection saved)
+        if (isRowFullAccess(projection) &&
+            (!grantsByProjection[projection] || grantsByProjection[projection].length === 0)) {
+          selected = new Set(allCommands);   // tick everything
+          updateCounter();
+        }
+
+        if (!allCommands.length) {
+          els.list.innerHTML = '<div class="text-muted">No commands found.</div>';
+        } else {
+          renderList();
+          els.list.classList.remove('d-none');
+        }
+      })
+      .catch(err => {
+        els.loading.classList.add('d-none');
+        els.error.textContent = 'Error: ' + (err && err.message ? err.message : err);
+        els.error.classList.remove('d-none');
+      });
+  }
+  window.openCommandsModal = openCommandsModal;
+
+  els.filter.addEventListener('input', renderList);
+
+  // Save selection (just store client-side and update row count)
+  els.btnSave.addEventListener('click', () => {
+    grantsByProjection[currentProjection] = Array.from(selected); // strings only
+    setRowSelectedCount(currentProjection, selected.size);
+    if (bsModal) bsModal.hide();
+  });
+
+  // On form submit, serialize selections to hidden input so the server can grant AFTER create/update
+  els.form.addEventListener('submit', () => {
+    const items = Object.keys(grantsByProjection).map(p => ({
+      projection: p,
+      commands: grantsByProjection[p],
+      client: "web"
+    })).filter(x => x.commands && x.commands.length > 0);
+    els.hiddenJson.value = JSON.stringify({ items });
+
+    // Show loading icon inside the Proceed button & prevent double submit
+    const btn = document.getElementById('btnProceed') || els.form.querySelector('button[type="submit"]');
+    if (btn && btn.dataset.loading !== '1') {
+      btn.dataset.loading = '1';
+      btn.disabled = true;
+      btn.innerHTML =
+        '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>' +
+        'Processing...';
+    }
+  });
+</script>
+
+{% if not is_update %}
+<script>
+  // Create/Update toggle (only when NOT in hardcoded update mode)
+  const modeCreate = document.getElementById('modeCreate');
+  const modeUpdate = document.getElementById('modeUpdate');
+  const createWrap = document.getElementById('createWrap');
+  const updateWrap = document.getElementById('updateWrap');
+  const roleName  = document.getElementById('role_name');
+  const existing  = document.getElementById('existing_role');
+
+  function syncMode() {
+    const create = modeCreate.checked;
+    createWrap.classList.toggle('hide', !create);
+    updateWrap.classList.toggle('hide', create);
+    if (roleName) roleName.required = create;
+    if (existing) existing.required = !create;
+  }
+  modeCreate.addEventListener('change', syncMode);
+  modeUpdate.addEventListener('change', syncMode);
+  syncMode();
+</script>
+{% endif %}
+
+<!-- NEW: create-first flow (no Jinja inside JS) -->
+<!-- NEW: create-first flow (friendly errors + stay in "Create new") -->
+<script>
+  // Read values that backend rendered into data attributes
+  const pvEl = document.getElementById('pageVars');
+  const stateCF = {
+    created: pvEl?.dataset.created === 'true',
+    role: pvEl?.dataset.role || ''
+  };
+
+  const flashElCF = document.getElementById('flash');
+  function flashCF(kind, msg, timeoutMs = 4500){
+    if (!flashElCF) return;
+    flashElCF.className = 'alert alert-' + kind;
+    flashElCF.textContent = msg;
+    flashElCF.classList.remove('d-none');
+    if (timeoutMs > 0) {
+      clearTimeout(flashCF._t);
+      flashCF._t = setTimeout(() => flashElCF.classList.add('d-none'), timeoutMs);
+    }
+  }
+  function clearFlashCF(){
+    if (!flashElCF) return;
+    clearTimeout(flashCF._t);
+    flashElCF.classList.add('d-none');
+  }
+
+  const summaryBlockCF = document.getElementById('summaryBlock');
+  const btnCreateOnlyCF = document.getElementById('btnCreateOnly');
+  const btnProceedCF    = document.getElementById('btnProceed');
+
+  const modeCreateEl = document.getElementById('modeCreate');
+  const modeUpdateEl = document.getElementById('modeUpdate');
+  const roleNameEl   = document.getElementById('role_name');
+  const existingEl   = document.getElementById('existing_role');  // hidden <select> in create mode
+  const roleTypeEl   = document.getElementById('role_type');
+  const roleFormEl   = document.getElementById('roleForm');
+
+  function setSummaryEnabledCF(on){
+    if (summaryBlockCF) summaryBlockCF.classList.toggle('disabled', !on);
+  }
+
+  function getRoleForProceed(){
+    const rn = (roleNameEl?.value || '').trim();
+    return (stateCF.role || rn || '').trim();
+  }
+
+  // After successful AJAX create
+  function afterCreatedCF(role){
+    stateCF.created = true;
+    stateCF.role = role;
+
+    if (btnCreateOnlyCF){
+      btnCreateOnlyCF.disabled = true;
+      btnCreateOnlyCF.classList.replace('btn-outline-primary','btn-outline-secondary');
+      btnCreateOnlyCF.textContent = 'Created';
+    }
+    if (btnProceedCF) btnProceedCF.disabled = false;
+    setSummaryEnabledCF(true);
+
+    if (roleNameEl){
+      roleNameEl.value = role;
+      roleNameEl.readOnly = true;      // readOnly keeps value in POST
+      roleNameEl.classList.add('bg-light');
+    }
+
+    flashCF('success', `Permission set "${role}" created. You can now proceed.`, 3500);
+  }
+
+  // Map API errors to friendly messages
+  function friendlyErrorFromResponse(json, httpStatus){
+    let msg = 'Failed to create the permission set. Please try again.';
+    if (json && typeof json === 'object'){
+      const topCode = json.error && (json.error.code || json.error.Message || json.error.message);
+      if (topCode && String(topCode).toUpperCase().includes('DB_OBJECT_EXIST')){
+        return 'That permission set already exists. Use a different name or choose "Update existing".';
+      }
+      const details = (json.error && json.error.details) || json.details || [];
+      if (Array.isArray(details)){
+        const hit = details.find(d => {
+          const t = (d && (d.message || d.Message) || '').toLowerCase();
+          return t.includes('already exists') || t.includes('fnd_record_exist') || t.includes('ora-20112');
+        });
+        if (hit) return 'That permission set already exists. Use a different name or choose "Update existing".';
+      }
+      const topMsg = json.error && (json.error.message || json.error.Message);
+      if (topMsg) msg = topMsg;
+    }
+    if (httpStatus === 409) msg = 'That permission set already exists. Use a different name or choose "Update existing".';
+    return msg;
+  }
+
+  async function createOnlyCF(){
+    clearFlashCF();
+
+    if (modeCreateEl && !modeCreateEl.checked){
+      flashCF('warning', 'Switch to "Create new" to use this button, or choose an existing role then Proceed.', 4000);
+      return;
+    }
+
+    const rn = (roleNameEl?.value || '').trim();
+    if (!rn){
+      flashCF('warning', 'Please enter a new Permission Set name.', 4000);
+      roleNameEl?.focus();
+      return;
+    }
+    const rt = (roleTypeEl?.value || 'EndUserRole');
+
+    try{
+      const fd = new FormData();
+      fd.set('mode', 'create');
+      fd.set('role_name', rn);
+      fd.set('role_type', rt);
+      fd.set('create_only', '1');
+
+      const resp = await fetch('/create_permission_set?create_only=1', {
+        method: 'POST',
+        body: fd,
+        headers:{'Accept':'application/json'}
+      });
+
+      const dataText = await resp.text();
+      let dataJson = {};
+      try { dataJson = dataText ? JSON.parse(dataText) : {}; } catch(_) {}
+
+      if (!resp.ok || (dataJson && dataJson.error)){
+        const friendly = friendlyErrorFromResponse(dataJson, resp.status);
+        throw new Error(friendly);
+      }
+
+      const role = (dataJson && dataJson.role) || rn;
+      afterCreatedCF(role);
+
+    }catch(err){
+      flashCF('warning', err.message || 'Could not create permission set.', 5000);
+    }
+  }
+
+  if (btnCreateOnlyCF) btnCreateOnlyCF.addEventListener('click', createOnlyCF);
+
+  if (!stateCF.created) setSummaryEnabledCF(false);
+
+  // Ensure Proceed posts update-mode to grant only (and includes existing_role)
+  if (roleFormEl) {
+    roleFormEl.addEventListener('submit', (ev) => {
+      const createChecked = !!(modeCreateEl && modeCreateEl.checked);
+
+      // If still in Create and not yet created, block and guide
+      if (createChecked && !stateCF.created) {
+        ev.preventDefault();
+        flashCF('warning', 'Please click "Create Permission Set" first, then Proceed.', 4500);
+        return;
+      }
+
+      if (stateCF.created) {
+        const roleForProceed = getRoleForProceed();
+        if (!roleForProceed) {
+          ev.preventDefault();
+          flashCF('danger', 'Missing permission set name. Please refresh and try again.', 5000);
+          return;
+        }
+
+        // CRITICAL FIX: prevent the hidden <select name="existing_role"> from submitting empty value first
+        if (existingEl) {
+          try {
+            // Best: disable and rename so it won’t submit
+            existingEl.disabled = true;
+            existingEl.setAttribute('data-orig-name', 'existing_role');
+            existingEl.removeAttribute('name');
+          } catch(_) {}
+        }
+
+        // Remove any previous hidden injections (avoid duplicates)
+        roleFormEl.querySelectorAll('input[type="hidden"][name="mode"]').forEach(n => n.remove());
+        roleFormEl.querySelectorAll('input[type="hidden"][name="existing_role"]').forEach(n => n.remove());
+
+        // Inject hidden fields to run the backend in update-mode against the created role
+        const hiddenMode = document.createElement('input');
+        hiddenMode.type = 'hidden'; hiddenMode.name = 'mode'; hiddenMode.value = 'update';
+        roleFormEl.appendChild(hiddenMode);
+
+        const hiddenExisting = document.createElement('input');
+        hiddenExisting.type = 'hidden'; hiddenExisting.name = 'existing_role'; hiddenExisting.value = roleForProceed;
+        roleFormEl.appendChild(hiddenExisting);
+      }
+
+      // Proceed button UX (leave your other submit handler intact)
+      const btn = btnProceedCF || roleFormEl.querySelector('button[type="submit"]');
+      if (btn && btn.dataset.loading !== '1') {
+        btn.dataset.loading = '1';
+        btn.disabled = true;
+        btn.innerHTML =
+          '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>' +
+          'Processing...';
+      }
+    });
+  }
+
+  // Keep UI consistent when toggling radios
+  function syncModeCF(){
+    if (!modeCreateEl || !modeUpdateEl) return;
+    const create = modeCreateEl.checked;
+
+    if (create && !stateCF.created) {
+      setSummaryEnabledCF(false);
+      if (btnCreateOnlyCF) btnCreateOnlyCF.disabled = false;
+      if (btnProceedCF) btnProceedCF.disabled = true;
+    }
+
+    if (!create) {
+      setSummaryEnabledCF(true);
+      if (btnCreateOnlyCF) btnCreateOnlyCF.disabled = true;
+      if (btnProceedCF) btnProceedCF.disabled = false;
+    }
+
+    if (create && stateCF.created) {
+      if (btnProceedCF) btnProceedCF.disabled = false;
+      setSummaryEnabledCF(true);
+      if (roleNameEl) { roleNameEl.readOnly = true; roleNameEl.classList.add('bg-light'); }
+    }
+  }
+
+  if (modeCreateEl) modeCreateEl.addEventListener('change', syncModeCF);
+  if (modeUpdateEl) modeUpdateEl.addEventListener('change', syncModeCF);
+  syncModeCF();
+
+  if (stateCF.created) {
+    setSummaryEnabledCF(true);
+    if (btnProceedCF) btnProceedCF.disabled = false;
+    if (roleNameEl) { roleNameEl.readOnly = true; roleNameEl.classList.add('bg-light'); }
+  }
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

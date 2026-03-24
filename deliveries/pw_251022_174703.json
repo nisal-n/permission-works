@@ -1,0 +1,14 @@
+{
+  "version_id": "pw_251022_174703",
+  "source_env": "DEV",
+  "created_ts": 1761135423.6109834,
+  "default_target_env": "CFG",
+  "migrations": [
+    {
+      "to": "CFG",
+      "mode": "xml",
+      "ts": 1761135439.6121714,
+      "status": "ok"
+    }
+  ]
+}

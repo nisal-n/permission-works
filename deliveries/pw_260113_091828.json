@@ -1,0 +1,24 @@
+{
+  "backup": {
+    "path": "backup/pw_260113_091828.zip",
+    "roles": [
+      "TEST_PER_01"
+    ],
+    "count": 1,
+    "target_env": "DEV",
+    "ok": true,
+    "error": null
+  },
+  "version_id": "pw_260113_091828",
+  "source_env": "DEV",
+  "created_ts": 1768295908.4299073,
+  "default_target_env": "DEV",
+  "migrations": [
+    {
+      "to": "DEV",
+      "mode": "xml",
+      "ts": 1768295956.373041,
+      "status": "ok"
+    }
+  ]
+}

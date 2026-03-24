@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Assign {{ 'User Groups' if entity=='groups' else 'Users' }}</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons (optional, used for small icons in buttons) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+  <style>
+    :root{
+      --brand-purple: #5b2dcc;
+      --brand-purple-700:#4a22b1;
+      --brand-deep:   #3b139a;
+      --brand-accent: #7c4dff;
+      --brand-soft:   #f5f3ff;
+      --brand-soft-2: #efe9ff;
+      --brand-ink:    #1e1b2e;
+      --brand-muted:  #6b6b7a;
+
+      /* Buttons */
+      --btn-radius: .5rem;
+      --btn-font-weight: 500;
+
+      /* Surfaces */
+      --card-radius: .9rem;
+      --chip-bg: #ffffff;
+      --chip-br: #e7e3ff;
+      --chip-text:#4a4298;
+
+      /* Table */
+      --thead-bg: var(--brand-soft);
+      --row-hover: #f7f5ff;
+      --sticky-bg: #ffffff;
+    }
+
+    /* App background */
+    body.bg-light{
+      background:
+        radial-gradient(1200px 600px at 20% -10%, #ede7ff 0%, transparent 60%) no-repeat,
+        radial-gradient(1000px 500px at 120% 10%, #efe9ff 0%, transparent 60%) no-repeat,
+        #faf9ff;
+      color: var(--brand-ink);
+    }
+
+    /* Page header – dark purple bar */
+    .page-header {
+      border-radius: var(--card-radius);
+      background: linear-gradient(135deg, var(--brand-purple-700) 0%, var(--brand-deep) 100%);
+      border: 1px solid rgba(255,255,255,.08);
+      padding: 1rem 1.25rem;
+      color: #fff;
+      box-shadow: 0 10px 22px rgba(59,19,154,.18), 0 2px 6px rgba(59,19,154,.12);
+    }
+    .page-header h3,
+    .page-header h3 .text-primary{
+      color: #fff !important;
+      text-decoration: none;
+    }
+    .page-header .form-select{
+      background: #fff;
+      color: var(--brand-ink);
+      border-color: rgba(255,255,255,.25);
+      border-radius: .6rem;
+    }
+    .page-header .form-select:focus{
+      border-color: #fff;
+      box-shadow: 0 0 0 .16rem rgba(255,255,255,.25);
+    }
+
+    /* Card polish */
+    .card.shadow-sm{
+      border: 1px solid #ece9ff;
+      border-radius: var(--card-radius);
+      box-shadow: 0 8px 18px rgba(91,45,204,.06), 0 2px 6px rgba(91,45,204,.05) !important;
+      overflow: hidden;
+    }
+    .card-body{
+      background: #fff;
+    }
+
+    /* Sticky toolbar */
+    .sticky-topbar{
+      position: sticky; top: 0; z-index: 2;
+      background: var(--sticky-bg);
+      padding: .75rem 0;
+      border-bottom: 1px solid #ece9ff;
+      box-shadow: 0 6px 12px -10px rgba(91,45,204,.35);
+    }
+
+    /* Inputs */
+    .input-group .input-group-text{
+      background: var(--brand-soft);
+      border-color: #e6e2ff;
+      color: var(--brand-ink);
+      font-weight: 500;
+    }
+    .form-control, .form-select{
+      border-radius: .6rem;
+      border-color: #e6e2ff;
+      background: #fff;
+    }
+    .form-control:focus, .form-select:focus{
+      border-color: var(--brand-accent);
+      box-shadow: 0 0 0 .16rem rgba(123, 77, 255, .15);
+    }
+
+    /* Buttons — smart, modern, purple theme */
+    .btn{ border-radius: var(--btn-radius); font-weight: var(--btn-font-weight); }
+    .btn-sm{ border-radius: .45rem; }
+    .btn-light{
+      background: #fff; border: 1px solid #e6e2ff; color: var(--brand-ink);
+    }
+    .btn-light:hover{
+      background: var(--brand-soft);
+      border-color: #d8d1ff;
+      color: var(--brand-deep);
+    }
+    /* Primary → white button with purple outline that fills on hover */
+    .btn-primary{
+      background: #fff; color: var(--brand-deep);
+      border: 1px solid var(--brand-deep);
+    }
+    .btn-primary:hover, .btn-primary:focus{
+      background: var(--brand-deep);
+      color: #fff;
+      border-color: var(--brand-deep);
+      box-shadow: 0 6px 14px rgba(59,19,154,.18);
+    }
+    /* Success → filled deep purple (not classic green) */
+    .btn-success{
+      background: var(--brand-deep); border-color: var(--brand-deep);
+      color: #fff;
+    }
+    .btn-success:hover, .btn-success:focus{
+      background: var(--brand-purple-700); border-color: var(--brand-purple-700);
+      box-shadow: 0 6px 14px rgba(59,19,154,.18);
+      color:#fff;
+    }
+    /* Outline primary → white background + purple border */
+    .btn-outline-primary{
+      background: #fff; border-color: var(--brand-deep); color: var(--brand-deep);
+    }
+    .btn-outline-primary:hover{
+      background: var(--brand-deep); color: #fff; border-color: var(--brand-deep);
+      box-shadow: 0 6px 14px rgba(59,19,154,.18);
+    }
+    /* Outline secondary in theme */
+    .btn-outline-secondary{
+      background: #fff; border-color: #d7d2ff; color: var(--brand-ink);
+    }
+    .btn-outline-secondary:hover{
+      background: var(--brand-soft); border-color: var(--brand-accent); color: var(--brand-deep);
+    }
+
+    /* “Longer” primary for a more prominent save/next */
+    .btn-primary.long{
+      padding-left: 1.1rem; padding-right: 1.1rem;
+    }
+
+    /* Table */
+    .table thead.table-light th{
+      background: var(--thead-bg) !important;
+      color: var(--brand-ink);
+      border-bottom-color: #e6e2ff;
+      font-weight: 600;
+    }
+    .table tbody tr.user-row:hover{
+      background: var(--row-hover);
+    }
+    .uid code{
+      color: var(--brand-deep);
+      background: var(--brand-soft);
+      border: 1px solid #e6e2ff;
+      padding: .15rem .35rem;
+      border-radius: .35rem;
+    }
+    .ulabel{
+      color: var(--brand-muted);
+    }
+
+    /* Checkbox accent */
+    input[type="checkbox"].form-check-input{
+      accent-color: var(--brand-deep);
+      border-color: #d9d3ff;
+    }
+
+    /* Subtle top chips (if needed later) */
+    .chip{
+      background: var(--chip-bg);
+      border: 1px solid var(--chip-br);
+      color: var(--chip-text);
+      font-weight: 500;
+      border-radius: 999px;
+      padding: .15rem .6rem;
+    }
+
+    /* Old styles (kept and slightly tuned) */
+    .user-row:hover { background: var(--row-hover); }
+  </style>
+</head>
+<body class="bg-light">
+<div class="container py-3">
+
+  <div class="page-header d-flex justify-content-between align-items-center">
+    <h3 class="mb-0">
+      Add {{ 'User Groups' if entity=='groups' else 'Users' }} to Role:
+      <span class="text-primary">{{ role }}</span>
+    </h3>
+    <div class="d-flex align-items-center gap-2">
+      <select id="entitySelect" class="form-select form-select-sm">
+        <option value="users" {% if entity=='users' %}selected{% endif %}>Users</option>
+        <option value="groups" {% if entity=='groups' %}selected{% endif %}>User Groups</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- IMPORTANT: action is passed from the route as grant_post_url and points to permissions.assign_members -->
+  <form id="assignForm" method="post" action="{{ grant_post_url }}" class="card shadow-sm mt-3">
+    <div class="card-body">
+
+      <!-- REQUIRED hidden fields (names must match backend) -->
+      <input type="hidden" name="role" value="{{ role }}">
+      <input type="hidden" name="entity" value="{{ entity }}">
+      <!-- controls which step to go next; JS flips this for Next/Finish -->
+      <input type="hidden" name="go_next" id="go_next" value="">
+
+      <div class="sticky-topbar">
+        <div class="row g-2 align-items-center">
+          <div class="col-md-7">
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input type="text" class="form-control" id="searchBox" placeholder="Filter by ID or label (showing first 50)">
+            </div>
+          </div>
+          <div class="col-md-5 text-end">
+            <a href="{{ url_for('dashboard.dashboard_home') }}" class="btn btn-light btn-sm me-1">
+              <i class="bi bi-speedometer2 me-1"></i> Dashboard
+            </a>
+            <button type="button" id="selectAllBtn" class="btn btn-outline-primary btn-sm me-1">
+              <i class="bi bi-check2-square me-1"></i> Select visible
+            </button>
+            <button type="button" id="clearAllBtn" class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-x-square me-1"></i> Clear all
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-responsive mt-3">
+        <table class="table table-sm align-middle">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 40px;"></th>
+              <th>{{ 'Group ID' if entity=='groups' else 'User ID' }}</th>
+              <th>Label / Description</th>
+            </tr>
+          </thead>
+          <tbody id="usersTbody">
+            {% for u in records %}
+            <tr class="user-row">
+              <!-- NAME MUST BE ids[] to match assign_members -->
+              <td><input class="form-check-input user-check" type="checkbox" name="ids[]" value="{{ u.id }}"></td>
+              <td class="uid"><code>{{ u.id }}</code></td>
+              <td class="ulabel text-muted">{{ u.label or '' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Actions (Back • Next • Finish) -->
+      <div class="d-flex justify-content-between align-items-center mt-3">
+        <a href="{{ url_for('permissions.create_permission_ui', role=role) }}" class="btn btn-light">
+          <i class="bi bi-arrow-left-short me-1"></i> Back
+        </a>
+
+        <div class="d-flex gap-2">
+          <!-- Submit + go to Grant Structure (unchanged) -->
+          <button type="submit" class="btn btn-primary long" name="go_next" value="1">
+            Next (Grant Structure)
+          </button>
+
+          <!-- New: run granting as an inline action (no redirect) -->
+          <button type="button" id="btnGrant" class="btn btn-outline-primary">
+            Grant {{ 'Users/User Groups' if entity=='groups' else 'Users/User Groups' }}
+          </button>
+
+          <!-- New: finish the flow without granting; redirect to success page -->
+          <a
+            id="btnFinish"
+            class="btn btn-success"
+            href="{{ url_for('permissions.grant_success') }}?role={{ role }}&entity={{ entity }}&granted=0"
+          >
+            Finish
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </form>
+</div>
+
+<script>
+  // Switch Users/Groups preserves current role
+  const entitySelect = document.getElementById('entitySelect');
+  entitySelect.addEventListener('change', () => {
+    const v = entitySelect.value;
+    window.location.href = "{{ url_for('permissions.assign_users') }}?role={{ role }}&entity=" + encodeURIComponent(v);
+  });
+
+  // Filter + select helpers
+  const searchBox    = document.getElementById('searchBox');
+  const tbody        = document.getElementById('usersTbody');
+  const selectAllBtn = document.getElementById('selectAllBtn');
+  const clearAllBtn  = document.getElementById('clearAllBtn');
+
+  function filterRows() {
+    const q = (searchBox.value || '').toLowerCase();
+    tbody.querySelectorAll('tr').forEach(r => {
+      const id    = (r.querySelector('.uid')?.textContent || '').toLowerCase();
+      const label = (r.querySelector('.ulabel')?.textContent || '').toLowerCase();
+      r.style.display = !q || id.includes(q) || label.includes(q) ? '' : 'none';
+    });
+  }
+  searchBox.addEventListener('input', filterRows);
+
+  selectAllBtn.addEventListener('click', () => {
+    tbody.querySelectorAll('tr').forEach(r => {
+      if (r.style.display !== 'none') {
+        const cb = r.querySelector('.user-check');
+        if (cb) cb.checked = true;
+      }
+    });
+  });
+
+  clearAllBtn.addEventListener('click', () => {
+    document.querySelectorAll('.user-check').forEach(cb => cb.checked = false);
+  });
+
+  // Submit handler – ONLY for "Next (Grant Structure)"
+  const form = document.getElementById('assignForm');
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+
+    // 1) Tell whether the "Next (Grant Structure)" button submitted the form
+    const isNext = !!(ev.submitter && ev.submitter.name === 'go_next' && ev.submitter.value === '1');
+
+    const entityVal = '{{ entity }}'; // "users" or "groups"
+
+    // ---- LOADING UI (same spinner style as in the Permission Set page) ----
+    const submitBtn = ev.submitter; // the button that triggered submit
+    const originalHTML = submitBtn ? submitBtn.innerHTML : '';
+    const originalDisabled = submitBtn ? submitBtn.disabled : false;
+    if (submitBtn && submitBtn.dataset.loading !== '1') {
+      submitBtn.dataset.loading = '1';
+      submitBtn.disabled = true;
+      submitBtn.innerHTML =
+        '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>' +
+        (isNext ? 'Opening Grant Structure…' : 'Finishing…');
+    }
+    // ----------------------------------------------------------------------
+
+    // 2) Build FormData for the backend (same endpoint, unchanged)
+    const fd = new FormData();
+    fd.set('role',   '{{ role }}');
+    fd.set('entity', entityVal);
+    if (isNext) fd.set('go_next', '1');   // keep compatibility with backend
+
+    // Append only the checked & visible rows
+    const rows = document.getElementById('usersTbody').querySelectorAll('tr');
+    rows.forEach(r => {
+      if (r.style.display === 'none') return;
+      const cb = r.querySelector('.user-check');
+      if (cb && cb.checked) fd.append('ids[]', cb.value);
+    });
+
+    try {
+      const resp = await fetch(form.action, {
+        method: 'POST',
+        body: fd,
+        headers: { 'Accept': 'application/json' }
+      });
+
+      const text = await resp.text();
+      let j = null; try { j = JSON.parse(text); } catch {}
+
+      if (!resp.ok || !j || !j.ok) {
+        const msg = (j && (j.details || j.error)) || `HTTP ${resp.status} - ${text.slice(0,300)}`;
+        throw new Error(msg);
+      }
+
+      // 3) Redirects
+      // 3) Redirect only for "Next (Grant Structure)"
+      if (isNext) {
+        window.location.href = "{{ url_for('permissions.grant_structure', role=role) }}";
+      }
+    } catch (e) {
+      // Restore button UI on failure
+      if (submitBtn) {
+        submitBtn.disabled = originalDisabled;
+        submitBtn.innerHTML = originalHTML;
+        submitBtn.dataset.loading = '0';
+      }
+      alert('Grant failed: ' + e.message);
+    }
+  });
+    // Inline "Grant Users/User Groups" (no redirect)
+  const btnGrant = document.getElementById('btnGrant');
+  btnGrant?.addEventListener('click', async () => {
+    const entityVal = '{{ entity }}';
+    const originalHTML = btnGrant.innerHTML;
+    btnGrant.disabled = true;
+    btnGrant.innerHTML =
+      '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Granting…';
+
+    // Build the same FormData the submit path uses
+    const fd = new FormData();
+    fd.set('role',   '{{ role }}');
+    fd.set('entity', entityVal);
+    document.querySelectorAll('#usersTbody tr').forEach(r => {
+      if (r.style.display === 'none') return;
+      const cb = r.querySelector('.user-check');
+      if (cb && cb.checked) fd.append('ids[]', cb.value);
+    });
+
+    try {
+      const resp = await fetch(form.action, { method: 'POST', body: fd, headers: {'Accept': 'application/json'} });
+      const txt  = await resp.text();
+      const j    = (() => { try { return JSON.parse(txt); } catch { return null; } })();
+      if (!resp.ok || !j || !j.ok) {
+        const msg = (j && (j.details || j.error)) || `HTTP ${resp.status} - ${txt.slice(0,300)}`;
+        throw new Error(msg);
+      }
+      const n = Number(j.granted ?? 0);
+      btnGrant.innerHTML = `Granted${Number.isFinite(n) && n>0 ? ' ('+n+')' : ''}`;
+    } catch (e) {
+      btnGrant.innerHTML = originalHTML;
+      alert('Grant failed: ' + e.message);
+    } finally {
+      btnGrant.disabled = false;
+    }
+  });
+
+  const btnFinish = document.getElementById('btnFinish');
+  btnFinish?.addEventListener('click', function (e) {
+    if (this.dataset.loading === '1') {
+      e.preventDefault();
+      return;
+    }
+    this.dataset.loading = '1';
+    this.classList.add('disabled');
+    this.setAttribute('aria-disabled', 'true');
+    this.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Finishing…';
+  });
+
+</script>
+
+
+</body>
+</html>
